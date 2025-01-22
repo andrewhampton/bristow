@@ -63,7 +63,7 @@ RSpec.describe Bristow::Agent do
       expect(response.join).not_to be_empty
     end
 
-    it "accepts an array of string messages", vcr: { cassette_name: "Bristow_Agent_chat_accepts_array_of_strings" } do
+    it "accepts an array of string messages", vcr: true do
       response = []
       agent.chat(["Hello", "How are you?"]) do |part|
         response << part
@@ -71,7 +71,7 @@ RSpec.describe Bristow::Agent do
       expect(response.join).not_to be_empty
     end
 
-    it "updates chat history" do
+    it "updates chat history", vcr: true do
       expect {
         agent.chat(messages, &block)
       }.to change { agent.chat_history.length }.by_at_least(1)
@@ -80,7 +80,7 @@ RSpec.describe Bristow::Agent do
     context "with function calls" do
       let(:messages) { [{ "role" => "user", "content" => "Please test the value 'example'" }] }
 
-      it "handles function calls from the model" do
+      it "handles function calls from the model", vcr: true do
         response = agent.chat(messages, &block)
         expect(response).to include(
           a_hash_including(
