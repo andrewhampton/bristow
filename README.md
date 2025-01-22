@@ -9,6 +9,7 @@ Bristow is a Ruby framework for creating function-calling enabled agents that wo
 - 🛠 Type-safe function definitions
 - 🔌 Easy to extend with custom functions
 - 📝 Clean conversation management
+- 🏢 Multi-agent coordination through agencies
 
 ## Installation
 
@@ -47,12 +48,33 @@ These settings can be overridden on a per-agent basis when needed.
 
 ## Usage
 
-### Creating Functions and Agents
+### Simple Agent
+
+You can create agents without functions for basic tasks:
 
 ```ruby
 require 'bristow'
 
-# Define functions that GPT can call
+storyteller = Bristow::Agent.new(
+  name: 'Sydney',
+  description: 'Agent for telling spy stories',
+  system_message: 'Given a topic, you will tell a brief spy story',
+)
+
+messages = storyteller.chat([
+  { role: 'user', content: 'Cold war era Berlin' }
+]) do |part|
+  print part # Stream the response
+end
+
+# Print all messages in the conversation
+puts messages
+```
+
+### Basic Agent with Functions
+
+```ruby
+# Define functions that the model can call
 weather = Bristow::Function.new(
   name: "get_weather",
   description: "Get the current weather for a location",
@@ -72,91 +94,50 @@ weather_agent = Bristow::Agent.new(
   functions: [weather]
 )
 
-# Start a conversation
-messages = [
+# Chat with the agent
+weather_agent.chat([
   { "role" => "user", "content" => "What's the weather like in London?" }
-]
-
-# The client will:
-# 1. Send the message to GPT
-# 2. If GPT calls a function, route it to the appropriate function
-# 3. Add the function result to the conversation
-# 4. Return the updated messages array
-messages = weather_agent.chat(messages)
+]) do |part|
+  print part  # Stream the response
+end
 ```
 
-### Multiple Functions
+### Multi-Agent System
+
+You can coordinate multiple agents using agencies. Here's an example using the included supervisor agency:
 
 ```ruby
-# Define multiple functions for an agent
-translate = Bristow::Function.new(
-  name: "translate",
-  description: "Translate text to another language",
-  parameters: {
-    text: String,
-    target_language: String
-  }
-) do |text:, target_language:|
-  # Your translation API call here
-  "Translated text"
-end
-
-summarize = Bristow::Function.new(
-  name: "summarize",
-  description: "Summarize a piece of text",
-  parameters: {
-    text: String,
-    max_length: Integer
-  }
-) do |text:, max_length:|
-  # Your summarization logic here
-  "Summary of text"
-end
-
-# Create an agent with multiple functions
-language_agent = Bristow::Agent.new(
-  name: "LanguageAssistant",
-  description: "Helps with language-related tasks",
-  functions: [translate, summarize]
+# Create specialized agents
+pirate_talker = Bristow::Agent.new(
+  name: "PirateSpeaker",
+  description: "Agent for translating input to pirate-speak",
+  system_message: 'Given a text, you will translate it to pirate-speak.',
 )
+
+travel_agent = Bristow::Agent.new(
+  name: "TravelAgent",
+  description: "Agent for planning trips",
+  system_message: 'Given a destination, you will respond with a detailed itenerary that includes only dates, times, and locations.',
+)
+
+# Create a supervisor agency to coordinate the agents
+agency = Bristow::Agencies::Supervisor.create(agents: [pirate_talker, travel_agent])
+
+# The supervisor will automatically delegate to the appropriate agent.
+# In this case, it will almost certainly delegate to the travel_agent first, to get a bulleted itenerary.
+# Then, it will delegate to the pirate_talker to translate the itenerary into pirate-speak.
+agency.chat([
+  { role: "user", content: "I want to go to New York. Tell me about it as if you were a pirate." }
+]) do |part|
+  print part
+end
 ```
 
-### Agent Handoffs
-
-You can chain agents together to handle complex workflows:
-
-```ruby
-# Create agents for different tasks
-supervisor = Bristow::Agent.new(
-  name: "Supervisor",
-  description: "Supervises agents",
-  system_message: "You are a supervisor for agents"
-)
-
-researcher = Bristow::Agent.new(
-  name: "Researcher",
-  description: "Finds information",
-  system_message: "You are a researcher. Given a topic, you will research it.",
-  functions: [search, fetch_content]
-)
-
-summarizer = Bristow::Agent.new(
-  name: "Summarizer",
-  description: "Summarizes content",
-  system_message: "You are a summarizer. Given a piece of text, you will summarize it.",
-  functions: [summarize, translate]
-)
-
-agency = Bristow::Agencies::Supervisor.new(
-    supervisor: supervisor,
-    agents: [researcher, summarizer],
-    strategy: :round_robin
-)
-
-# Will call the supervisor, which may choose to hand off to any other agent repeatedly until the task is completed.
-agency.handle_message({ role: "user", content: "What is the current weather in London? Please provide the answer in Spanish." }) 
-
-```
+The supervisor will:
+1. Understand the user's request
+2. Choose the appropriate agent(s)
+3. Delegate parts of the task to different agents
+4. Combine their responses into a coherent answer
 
 ## Development
 
