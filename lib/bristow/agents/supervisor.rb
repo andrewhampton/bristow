@@ -7,7 +7,7 @@ module Bristow
         super(
           name: name,
           description: description,
-          system_message: system_prompt(available_agents),
+          system_message: build_system_message(available_agents),
           functions: [delegate_function],
           model: model
         )
@@ -16,13 +16,12 @@ module Bristow
 
       private
 
-      def system_prompt(available_agents)
-        agent_descriptions = available_agents
-          .reject { |agent| agent.name == name }
-          .map { |agent| "- #{agent.name}: #{agent.description}" }
-          .join("\n")
+      def build_system_message(available_agents)
+        agent_descriptions = available_agents.map do |agent|
+          "- #{agent.name}: #{agent.description}"
+        end.join("\n")
 
-        <<~PROMPT
+        <<~MESSAGE
           You are a supervisor agent that coordinates between specialized agents.
           Your role is to:
           1. Understand the user's request
@@ -39,7 +38,7 @@ module Bristow
           1. Return it to the user if it fully answers their request
           2. Delegate to another agent if more work is needed
           3. Add your own clarification or summary if needed
-        PROMPT
+        MESSAGE
       end
 
       def delegate_function
@@ -52,17 +51,17 @@ module Bristow
           }
         ) do |agent_name:, message:|
           raise "No agency set for supervisor" unless agency
-          
-          agent = agency.find_agent(agent_name)
-          raise ArgumentError, "Agent #{agent_name} not found" unless agent
-          
-          # Don't delegate to self
-          return { error: "Cannot delegate to self" } if agent == self
 
-          Bristow.configuration.logger.info("Delegating to #{agent_name}: #{message}")
-          
-          response = agent.chat([{ "role" => "user", "content" => message }])
-          { response: response.last["content"] }
+          if agent_name == name
+            { error: "Cannot delegate to self" }
+          else
+            agent = agency.find_agent(agent_name)
+            raise ArgumentError, "Agent #{agent_name} not found" unless agent
+
+            Bristow.configuration.logger.info("Delegating to #{agent_name}: #{message}")
+            response = agent.chat([{ "role" => "user", "content" => message }])
+            { response: response.last["content"] }
+          end
         end
       end
     end
