@@ -1,5 +1,9 @@
 require_relative "../lib/bristow"
 
+Bristow.configure do |config|
+    config.default_model = '4o-mini'
+end
+
 sydney = Bristow::Agent.new(
   name: 'Sydney',
   description: 'Agent for telling spy stories',
