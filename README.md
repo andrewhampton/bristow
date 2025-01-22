@@ -35,8 +35,8 @@ Bristow.configure do |config|
   # Your OpenAI API key (defaults to ENV['OPENAI_API_KEY'])
   config.openai_api_key = 'your-api-key'
   
-  # The default model to use (defaults to 'gpt-4')
-  config.default_model = '4o-mini'
+  # The default model to use (defaults to 'gpt-4o-mini')
+  config.default_model = 'gpt-4o'
   
   # Logger to use (defaults to Logger.new(STDOUT))
   config.logger = Rails.logger
