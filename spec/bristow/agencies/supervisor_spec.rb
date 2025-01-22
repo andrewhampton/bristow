@@ -40,6 +40,30 @@ RSpec.describe Bristow::Agencies::Supervisor do
       expect(@streamed_parts).not_to be_empty
     end
 
+    it "delegates chat to supervisor", vcr: { cassette_name: "bristow_agencies_supervisor_chat_delegates_chat_to_supervisor_base" } do
+      response = []
+      agency.chat([{ role: "user", content: "What's the weather in New York?" }]) do |part|
+        response << part
+      end
+      expect(response.join).not_to be_empty
+    end
+
+    it "accepts a string message", vcr: { cassette_name: "bristow_agencies_supervisor_chat_accepts_string_message" } do
+      response = []
+      agency.chat("What's the weather in New York?") do |part|
+        response << part
+      end
+      expect(response.join).not_to be_empty
+    end
+
+    it "accepts an array of string messages", vcr: { cassette_name: "bristow_agencies_supervisor_chat_accepts_array_of_strings" } do
+      response = []
+      agency.chat(["Hello", "What's the weather in New York?"]) do |part|
+        response << part
+      end
+      expect(response.join).not_to be_empty
+    end
+
     it "raises error when supervisor not set" do
       agency.supervisor = nil
       expect {

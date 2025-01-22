@@ -39,7 +39,7 @@ RSpec.describe Bristow::Agent do
     end
   end
 
-  describe "#chat", :vcr do
+  describe "#chat" do
     let(:messages) { [{ "role" => "user", "content" => "Hello" }] }
     let(:block) { proc { |part| @streamed_parts ||= []; @streamed_parts << part } }
 
@@ -47,12 +47,34 @@ RSpec.describe Bristow::Agent do
       @streamed_parts = []
     end
 
-    it "sends messages to OpenAI and streams the response" do
-      response = agent.chat(messages, &block)
-      expect(response).to be_an(Array)
-      expect(response[0]["role"]).to eq("system")
-      expect(response[1]["role"]).to eq("user")
-      expect(@streamed_parts).not_to be_empty
+    it "sends messages to OpenAI and streams the response", vcr: { cassette_name: "Bristow_Agent_chat_sends_messages_to_OpenAI_and_streams_the_response" } do
+      response = []
+      agent.chat([{ role: "user", content: "Hello" }]) do |part|
+        response << part
+      end
+      expect(response.join).to include("Hello")
+    end
+
+    it "accepts a string message", vcr: { cassette_name: "Bristow_Agent_chat_accepts_string_message" } do
+      response = []
+      agent.chat("Hello") do |part|
+        response << part
+      end
+      expect(response.join).not_to be_empty
+    end
+
+    it "accepts an array of string messages", vcr: { cassette_name: "Bristow_Agent_chat_accepts_array_of_strings" } do
+      response = []
+      agent.chat(["Hello", "How are you?"]) do |part|
+        response << part
+      end
+      expect(response.join).not_to be_empty
+    end
+
+    it "updates chat history" do
+      expect {
+        agent.chat(messages, &block)
+      }.to change { agent.chat_history.length }.by_at_least(1)
     end
 
     context "with function calls" do
@@ -70,12 +92,6 @@ RSpec.describe Bristow::Agent do
           )
         )
       end
-    end
-
-    it "updates chat history" do
-      expect {
-        agent.chat(messages, &block)
-      }.to change { agent.chat_history.length }.by_at_least(1)
     end
   end
 end

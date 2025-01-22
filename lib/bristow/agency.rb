@@ -6,7 +6,13 @@ module Bristow
       @agents = agents
     end
 
-    def chat(message, &block)
+    def chat(messages, &block)
+      # Convert string message to proper format
+      messages = [{ role: "user", content: messages }] if messages.is_a?(String)
+      
+      # Convert array of strings to proper format
+      messages = messages.map { |msg| msg.is_a?(String) ? { role: "user", content: msg } : msg } if messages.is_a?(Array)
+
       raise NotImplementedError, "Agency#chat must be implemented by a subclass"
     end
 

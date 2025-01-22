@@ -61,14 +61,18 @@ storyteller = Bristow::Agent.new(
   system_message: 'Given a topic, you will tell a brief spy story',
 )
 
-messages = storyteller.chat([
-  { role: 'user', content: 'Cold war era Berlin' }
-]) do |part|
+# Chat with a single message
+response = storyteller.chat('Tell me a story about Cold War era Berlin') do |part|
   print part # Stream the response
 end
 
-# Print all messages in the conversation
-puts messages
+# Chat with multiple messages
+response = storyteller.chat([
+  'Tell me a story about Cold War era Berlin',
+  'Make it about a double agent'
+]) do |part|
+  print part
+end
 ```
 
 ### Basic Agent with Functions
@@ -95,9 +99,7 @@ weather_agent = Bristow::Agent.new(
 )
 
 # Chat with the agent
-weather_agent.chat([
-  { "role" => "user", "content" => "What's the weather like in London?" }
-]) do |part|
+weather_agent.chat("What's the weather like in London?") do |part|
   print part  # Stream the response
 end
 ```
@@ -142,8 +144,6 @@ The supervisor will:
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 

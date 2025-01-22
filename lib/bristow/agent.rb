@@ -38,6 +38,25 @@ module Bristow
     end
 
     def chat(messages, &block)
+      # Convert string message to proper format
+      messages = [{ role: "user", content: messages }] if messages.is_a?(String)
+      
+      # Convert array to array of hashes
+      messages = if messages.is_a?(Array)
+        messages.map do |msg|
+          case msg
+          when String
+            { role: "user", content: msg }
+          when Hash
+            msg.transform_keys(&:to_sym)
+          else
+            raise ArgumentError, "Invalid message format: #{msg.inspect}"
+          end
+        end
+      else
+        messages
+      end
+
       messages = messages.dup
       messages.unshift(system_message_hash) if system_message
 
