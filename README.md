@@ -82,7 +82,7 @@ messages = [
 # 2. If GPT calls a function, route it to the appropriate function
 # 3. Add the function result to the conversation
 # 4. Return the updated messages array
-messages = weather_agent.chat(messages, "WeatherAssistant")
+messages = weather_agent.chat(messages)
 ```
 
 ### Multiple Functions

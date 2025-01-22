@@ -1,17 +1,19 @@
 require 'openai'
 require 'logger'
+require 'json'
 
 module Bristow
   class Agent
     attr_reader :name, :description, :functions, :system_message
 
-    def initialize(name:, description:, system_message: nil, functions: [])
+    def initialize(name:, description:, system_message: nil, functions: [], model: Bristow.configuration.default_model)
       @name = name
       @description = description
       @system_message = system_message
       @functions = functions
       @logger = Bristow.configuration.logger
       @client = Bristow.configuration.client
+      @model = model
     end
 
     def handle_function_call(name, arguments)
@@ -35,27 +37,52 @@ module Bristow
     end
 
     def chat(messages, &block)
-      messages = [system_message_hash] + messages if system_message
+      messages = messages.dup
+      messages.unshift(system_message_hash) if system_message
 
-      params = {
-        model: Bristow.configuration.default_model,
-        messages: messages
-      }
+      loop do
+        params = {
+          model: @model,
+          messages: messages
+        }
 
-      params[:functions] = functions_for_openai if functions.any?
-      params[:function_call] = "auto" if functions.any?
+        if functions.any?
+          params[:functions] = functions_for_openai
+          params[:function_call] = "auto"
+        end
 
-      if block_given?
-        streamed_message = handle_streaming_chat(params, &block)
-        messages + [streamed_message]
-      else
-        response = @client.chat(parameters: params)
-        message = response.dig("choices", 0, "message")
-        handle_chat_message(message, messages)
+        response_message = if block_given?
+          handle_streaming_chat(params, &block)
+        else
+          response = @client.chat(parameters: params)
+          response.dig("choices", 0, "message")
+        end
+
+        messages << response_message
+
+        # If there's no function call, we're done
+        break unless response_message["function_call"]
+
+        # Handle the function call and add its result to the messages
+        result = handle_function_call(
+          response_message["function_call"]["name"],
+          JSON.parse(response_message["function_call"]["arguments"])
+        )
+
+        yield "\n[Function Call: #{response_message["function_call"]["name"]}]\n" if block_given?
+        yield "#{result.to_json}\n" if block_given?
+
+        messages << {
+          "role" => "function",
+          "name" => response_message["function_call"]["name"],
+          "content" => result.to_json
+        }
       end
 
-    rescue Faraday::BadRequestError => e
+      messages
+    rescue Faraday::BadRequestError, Faraday::ResourceNotFound => e
       @logger.error("Error calling OpenAI API: #{e.response[:body]}")
+      raise
     end
 
     private
@@ -85,18 +112,9 @@ module Bristow
       end
 
       params[:stream] = stream_proc
-      response = @client.chat(parameters: params)
+      @client.chat(parameters: params)
 
       if function_name
-        # Handle the complete function call
-        result = handle_function_call(
-          function_name,
-          JSON.parse(function_args)
-        )
-
-        yield "\n[Function Call: #{function_name}]\n"
-        yield result.to_s
-
         {
           "role" => "assistant",
           "function_call" => {
@@ -109,28 +127,6 @@ module Bristow
           "role" => "assistant",
           "content" => full_content
         }
-      end
-    end
-
-    def handle_chat_message(message, messages)
-      function_call = message["function_call"]
-
-      if function_call
-        result = handle_function_call(
-          function_call["name"],
-          JSON.parse(function_call["arguments"])
-        )
-
-        messages + [
-          message,
-          {
-            "role" => "function",
-            "name" => function_call["name"],
-            "content" => result.to_s
-          }
-        ]
-      else
-        messages + [message]
       end
     end
 
@@ -154,21 +150,6 @@ module Bristow
       else
         { type: "string" }
       end
-    end
-  end
-
-  class Function
-    attr_reader :name, :description, :parameters
-
-    def initialize(name:, description:, parameters: {}, &block)
-      @name = name
-      @description = description
-      @parameters = parameters
-      @block = block
-    end
-
-    def call(**args)
-      @block.call(**args)
     end
   end
 end
