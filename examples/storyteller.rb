@@ -6,4 +6,6 @@ sydney = Bristow::Agent.new(
   system_message: 'Given a topic, you will tell a brief spy story',
 )
 
-pp sydney.chat([{role: 'user', content: 'Cold war era Berlin'}])
+sydney.chat([{role: 'user', content: 'Cold war era Berlin'}]) do |part|
+  print part
+end

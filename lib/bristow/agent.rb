@@ -34,7 +34,7 @@ module Bristow
       end
     end
 
-    def chat(messages)
+    def chat(messages, &block)
       messages = [system_message_hash] + messages if system_message
 
       params = {
@@ -45,9 +45,84 @@ module Bristow
       params[:functions] = functions_for_openai if functions.any?
       params[:function_call] = "auto" if functions.any?
 
-      response = @client.chat(parameters: params)
+      if block_given?
+        streamed_message = handle_streaming_chat(params, &block)
+        messages + [streamed_message]
+      else
+        response = @client.chat(parameters: params)
+        message = response.dig("choices", 0, "message")
+        handle_chat_message(message, messages)
+      end
 
-      message = response.dig("choices", 0, "message")
+    rescue Faraday::BadRequestError => e
+      @logger.error("Error calling OpenAI API: #{e.response[:body]}")
+    end
+
+    private
+
+    def handle_streaming_chat(params)
+      full_content = ""
+      function_name = nil
+      function_args = ""
+      streaming_finished = false
+
+      stream_proc = proc do |chunk|
+        delta = chunk.dig("choices", 0, "delta")
+        next unless delta
+
+        if delta["function_call"]
+          # Building function call
+          if delta.dig("function_call", "name")
+            function_name = delta.dig("function_call", "name")
+          end
+          if delta.dig("function_call", "arguments")
+            function_args += delta.dig("function_call", "arguments")
+          end
+        elsif delta["content"]
+          # Regular content
+          full_content += delta["content"]
+          yield delta["content"]
+        end
+
+        if chunk.dig("choices", 0, "finish_reason")
+          streaming_finished = true
+        end
+      end
+
+      params[:stream] = stream_proc
+      @client.chat(parameters: params)
+
+      # Wait for streaming to complete
+      until streaming_finished
+        sleep 0.1
+      end
+
+      if function_name
+        # Handle the complete function call
+        result = handle_function_call(
+          function_name,
+          JSON.parse(function_args)
+        )
+
+        yield "\n[Function Call: #{function_name}]\n"
+        yield result.to_s
+
+        {
+          "role" => "assistant",
+          "function_call" => {
+            "name" => function_name,
+            "arguments" => function_args
+          }
+        }
+      else
+        {
+          "role" => "assistant",
+          "content" => full_content
+        }
+      end
+    end
+
+    def handle_chat_message(message, messages)
       function_call = message["function_call"]
 
       if function_call
@@ -67,12 +142,7 @@ module Bristow
       else
         messages + [message]
       end
-
-    rescue Faraday::BadRequestError => e
-      @logger.error("Error calling OpenAI API: #{e.response[:body]}")
     end
-
-    private
 
     def system_message_hash
       {
