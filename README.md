@@ -1,24 +1,143 @@
 # Bristow
 
-TODO: Delete this and the text below, and describe your gem
+Bristow is a Ruby framework for creating function-calling enabled agents that work with OpenAI's GPT models. It provides a simple way to expose Ruby functions to GPT, handle the function calling protocol, and manage conversations.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/bristow`. To experiment with that code, run `bin/console` for an interactive prompt.
+## Features
+
+- 🤖 Simple function-calling interface for GPT models
+- 🔄 Automatic handling of OpenAI's function calling protocol
+- 🛠 Type-safe function definitions
+- 🔌 Easy to extend with custom functions
+- 📝 Clean conversation management
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add this line to your application's Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
+```ruby
+gem 'bristow'
+```
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+And then execute:
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+    $ bundle install
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Or install it yourself as:
+
+    $ gem install bristow
 
 ## Usage
 
-TODO: Write usage instructions here
+### Creating Functions and Agents
+
+```ruby
+require 'bristow'
+
+# Define functions that GPT can call
+weather = Bristow::Function.new(
+  name: "get_weather",
+  description: "Get the current weather for a location",
+  parameters: {
+    location: String,
+    unit: String
+  }
+) do |location:, unit: 'celsius'|
+  # Your weather API call here
+  { temperature: 22, unit: unit }
+end
+
+# Create an agent with these functions
+weather_agent = Bristow::Agent.new(
+  name: "WeatherAssistant",
+  description: "Helps with weather-related queries",
+  functions: [weather]
+)
+
+# Start a conversation
+messages = [
+  { "role" => "user", "content" => "What's the weather like in London?" }
+]
+
+# The client will:
+# 1. Send the message to GPT
+# 2. If GPT calls a function, route it to the appropriate function
+# 3. Add the function result to the conversation
+# 4. Return the updated messages array
+messages = weather_agent.chat(messages, "WeatherAssistant")
+```
+
+### Multiple Functions
+
+```ruby
+# Define multiple functions for an agent
+translate = Bristow::Function.new(
+  name: "translate",
+  description: "Translate text to another language",
+  parameters: {
+    text: String,
+    target_language: String
+  }
+) do |text:, target_language:|
+  # Your translation API call here
+  "Translated text"
+end
+
+summarize = Bristow::Function.new(
+  name: "summarize",
+  description: "Summarize a piece of text",
+  parameters: {
+    text: String,
+    max_length: Integer
+  }
+) do |text:, max_length:|
+  # Your summarization logic here
+  "Summary of text"
+end
+
+# Create an agent with multiple functions
+language_agent = Bristow::Agent.new(
+  name: "LanguageAssistant",
+  description: "Helps with language-related tasks",
+  functions: [translate, summarize]
+)
+```
+
+### Agent Handoffs
+
+You can chain agents together to handle complex workflows:
+
+```ruby
+# Create agents for different tasks
+supervisor = Bristow::Agent.new(
+  name: "Supervisor",
+  description: "Supervises agents",
+  system_message: "You are a supervisor for agents"
+)
+
+researcher = Bristow::Agent.new(
+  name: "Researcher",
+  description: "Finds information",
+  system_message: "You are a researcher. Given a topic, you will research it.",
+  functions: [search, fetch_content]
+)
+
+summarizer = Bristow::Agent.new(
+  name: "Summarizer",
+  description: "Summarizes content",
+  system_message: "You are a summarizer. Given a piece of text, you will summarize it.",
+  functions: [summarize, translate]
+)
+
+agency = Bristow::Agencies::Supervisor.new(
+    supervisor: supervisor,
+    agents: [researcher, summarizer],
+    strategy: :round_robin
+)
+
+# Will call the supervisor, which may choose to hand off to any other agent repeatedly until the task is completed.
+agency.handle_message({ role: "user", content: "What is the current weather in London? Please provide the answer in Spanish." }) 
+
+```
 
 ## Development
 
