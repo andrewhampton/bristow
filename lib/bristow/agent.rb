@@ -4,7 +4,7 @@ require 'json'
 
 module Bristow
   class Agent
-    attr_reader :name, :description, :functions, :system_message
+    attr_reader :name, :description, :functions, :system_message, :chat_history
 
     def initialize(name:, description:, system_message: nil, functions: [], model: Bristow.configuration.default_model)
       @name = name
@@ -14,6 +14,7 @@ module Bristow
       @logger = Bristow.configuration.logger
       @client = Bristow.configuration.client
       @model = model
+      @chat_history = []
     end
 
     def handle_function_call(name, arguments)
@@ -40,6 +41,8 @@ module Bristow
       messages = messages.dup
       messages.unshift(system_message_hash) if system_message
 
+      @chat_history = messages.dup
+
       loop do
         params = {
           model: @model,
@@ -59,6 +62,7 @@ module Bristow
         end
 
         messages << response_message
+        @chat_history << response_message
 
         # If there's no function call, we're done
         break unless response_message["function_call"]
