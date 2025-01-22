@@ -64,7 +64,6 @@ module Bristow
       full_content = ""
       function_name = nil
       function_args = ""
-      streaming_finished = false
 
       stream_proc = proc do |chunk|
         delta = chunk.dig("choices", 0, "delta")
@@ -83,19 +82,10 @@ module Bristow
           full_content += delta["content"]
           yield delta["content"]
         end
-
-        if chunk.dig("choices", 0, "finish_reason")
-          streaming_finished = true
-        end
       end
 
       params[:stream] = stream_proc
-      @client.chat(parameters: params)
-
-      # Wait for streaming to complete
-      until streaming_finished
-        sleep 0.1
-      end
+      response = @client.chat(parameters: params)
 
       if function_name
         # Handle the complete function call
