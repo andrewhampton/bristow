@@ -26,6 +26,25 @@ Or install it yourself as:
 
     $ gem install bristow
 
+## Configuration
+
+Configure Bristow with your settings:
+
+```ruby
+Bristow.configure do |config|
+  # Your OpenAI API key (defaults to ENV['OPENAI_API_KEY'])
+  config.openai_api_key = 'your-api-key'
+  
+  # The default model to use (defaults to 'gpt-4')
+  config.default_model = '4o-mini'
+  
+  # Logger to use (defaults to Logger.new(STDOUT))
+  config.logger = Rails.logger
+end
+```
+
+These settings can be overridden on a per-agent basis when needed.
+
 ## Usage
 
 ### Creating Functions and Agents

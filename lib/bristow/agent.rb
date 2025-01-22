@@ -5,13 +5,13 @@ module Bristow
   class Agent
     attr_reader :name, :description, :functions, :system_message
 
-    def initialize(name:, description:, system_message: nil, functions: [], logger: Logger.new(STDOUT))
+    def initialize(name:, description:, system_message: nil, functions: [])
       @name = name
       @description = description
       @system_message = system_message
       @functions = functions
-      @client = OpenAI::Client.new(access_token: ENV['OPENAI_API_KEY'])
-      @logger = logger
+      @logger = Bristow.configuration.logger
+      @client = Bristow.configuration.client
     end
 
     def handle_function_call(name, arguments)
@@ -38,7 +38,7 @@ module Bristow
       messages = [system_message_hash] + messages if system_message
 
       params = {
-        model: "gpt-4",
+        model: Bristow.configuration.default_model,
         messages: messages
       }
 
