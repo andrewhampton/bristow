@@ -33,7 +33,7 @@ messages_from_chat = weather_agent.chat(messages) do |part|
   print part
 end
 
-
+puts ''
 puts '*' * 10
 puts 'All messages:'
-pp messages_from_chat
+pp messsages

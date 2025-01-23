@@ -1,15 +1,6 @@
 # Bristow
 
-Bristow is a Ruby framework for creating function-calling enabled agents that work with OpenAI's GPT models. It provides a simple way to expose Ruby functions to GPT, handle the function calling protocol, and manage conversations.
-
-## Features
-
-- 🤖 Simple function-calling interface for GPT models
-- 🔄 Automatic handling of OpenAI's function calling protocol
-- 🛠 Type-safe function definitions
-- 🔌 Easy to extend with custom functions
-- 📝 Clean conversation management
-- 🏢 Multi-agent coordination through agencies
+Bristow makes working with AI models in your application dead simple. Whether it's a simple chat, using function calls, or building multi-agent systems, Bristow will help you hit the ground running.
 
 ## Installation
 
@@ -27,25 +18,6 @@ Or install it yourself as:
 
     $ gem install bristow
 
-## Configuration
-
-Configure Bristow with your settings:
-
-```ruby
-Bristow.configure do |config|
-  # Your OpenAI API key (defaults to ENV['OPENAI_API_KEY'])
-  config.openai_api_key = 'your-api-key'
-  
-  # The default model to use (defaults to 'gpt-4o-mini')
-  config.default_model = 'gpt-4o'
-  
-  # Logger to use (defaults to Logger.new(STDOUT))
-  config.logger = Rails.logger
-end
-```
-
-These settings can be overridden on a per-agent basis when needed.
-
 ## Usage
 
 ### Simple Agent
@@ -61,18 +33,14 @@ storyteller = Bristow::Agent.new(
   system_message: 'Given a topic, you will tell a brief spy story',
 )
 
-# Chat with a single message
-response = storyteller.chat('Tell me a story about Cold War era Berlin') do |part|
-  print part # Stream the response
+# Either stream the response with a block:
+storyteller.chat('Tell me a story about Cold War era Berlin') do |response_chunk|
+  print response_chunk # response_chunk will be the next chunk of text in the response from the model
 end
 
-# Chat with multiple messages
-response = storyteller.chat([
-  'Tell me a story about Cold War era Berlin',
-  'Make it about a double agent'
-]) do |part|
-  print part
-end
+# Or work with the entire conversation once it's complete:
+conversation = storyteller.chat('Tell me a story about Cold War era Berlin')
+puts conversation.last['content'] 
 ```
 
 ### Basic Agent with Functions
@@ -87,11 +55,11 @@ weather = Bristow::Function.new(
     unit: String
   }
 ) do |location:, unit: 'celsius'|
-  # Your weather API call here
+  # Implement your application logic here
   { temperature: 22, unit: unit }
 end
 
-# Create an agent with these functions
+# Create an agent with access to the function
 weather_agent = Bristow::Agent.new(
   name: "WeatherAssistant",
   description: "Helps with weather-related queries",
@@ -99,17 +67,17 @@ weather_agent = Bristow::Agent.new(
 )
 
 # Chat with the agent
-weather_agent.chat("What's the weather like in London?") do |part|
-  print part  # Stream the response
+weather_agent.chat("What's the weather like in London?") do |response_chunk|
+  print response_chunk 
 end
 ```
 
 ### Multi-Agent System
 
-You can coordinate multiple agents using agencies. Here's an example using the included supervisor agency:
+You can coordinate multiple agents using `Bristow::Agency`. Bristow includes a few common patterns, including the one like [langchain's multi-agent supervisor](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/). Here's how to use the supervisor agency:
 
 ```ruby
-# Create specialized agents
+# Create specialized agents. These can be configured with functions, as well.
 pirate_talker = Bristow::Agent.new(
   name: "PirateSpeaker",
   description: "Agent for translating input to pirate-speak",
@@ -125,21 +93,39 @@ travel_agent = Bristow::Agent.new(
 # Create a supervisor agency to coordinate the agents
 agency = Bristow::Agencies::Supervisor.create(agents: [pirate_talker, travel_agent])
 
-# The supervisor will automatically delegate to the appropriate agent.
-# In this case, it will almost certainly delegate to the travel_agent first, to get a bulleted itenerary.
-# Then, it will delegate to the pirate_talker to translate the itenerary into pirate-speak.
+# The supervisor will automatically delegate to the appropriate agent as needed before generating a response for the user.
 agency.chat([
   { role: "user", content: "I want to go to New York. Tell me about it as if you were a pirate." }
-]) do |part|
-  print part
+]) do |response_chunk|
+  print response_chunk
 end
 ```
 
-The supervisor will:
-1. Understand the user's request
-2. Choose the appropriate agent(s)
-3. Delegate parts of the task to different agents
-4. Combine their responses into a coherent answer
+## Configuration
+
+Configure Bristow with your settings:
+
+```ruby
+Bristow.configure do |config|
+  # Your OpenAI API key (defaults to ENV['OPENAI_API_KEY'])
+  config.openai_api_key = 'your-api-key'
+  
+  # The default model to use (defaults to 'gpt-4o-mini')
+  config.default_model = 'gpt-4o'
+  
+  # Logger to use (defaults to Logger.new(STDOUT))
+  config.logger = Rails.logger
+end
+
+# You can overrided these settings on a per-agent basis like this:
+storyteller = Bristow::Agent.new(
+  name: 'Sydney',
+  description: 'Agent for telling spy stories',
+  system_message: 'Given a topic, you will tell a brief spy story',
+  model: 'gpt-4o-mini',
+  logger: Logger.new(STDOUT)
+)
+```
 
 ## Development
 
