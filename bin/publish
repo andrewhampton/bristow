@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -ex
+
+# Check if working directory is clean
+if [[ -n $(git status -s) ]]; then
+  echo "Error: Working directory is not clean. Please commit all changes first."
+  exit 1
+fi
+
+# Remind about version update
+echo "Make sure you've updated the version in version.rb and committed the change."
+read -p "Press enter to continue"
+
+# First build the gem
+echo "Building the gem..."
+bundle exec rake build
+
+# Tell the user to git tag:
+echo "Please tag the release before publishing. For example:"
+echo "git tag -a v0.1.0 -m 'v0.1.0'"
+echo "And don't forget to push the tag: git push origin v0.1.0"
+
+# Wait for the user to tag:
+read -p "Press enter once you've created and pushed the tag"
+
+# Release to RubyGems
+echo "Publishing to RubyGems..."
+bundle exec rake release
+
+# Remind about GitHub release
+echo ""
+echo "Don't forget to create a GitHub release!"
+echo "1. Go to https://github.com/andrewhampton/bristow/releases"
+echo "2. Click 'Draft a new release'"
+echo "3. Select the tag you just created"
+echo "4. Fill in the release notes"
+echo "5. Click 'Publish release'"
