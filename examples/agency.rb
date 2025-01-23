@@ -20,5 +20,4 @@ messages = agency.chat([
     print part
 end
 
-
 puts messages

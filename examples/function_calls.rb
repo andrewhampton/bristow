@@ -36,4 +36,4 @@ end
 puts ''
 puts '*' * 10
 puts 'All messages:'
-pp messsages
+pp messages
