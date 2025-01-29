@@ -25,9 +25,6 @@ module Bristow
         # Convert string message to proper format
         messages = [{ role: "user", content: messages }] if messages.is_a?(String)
         
-        # Convert array of strings to proper format
-        messages = messages.map { |msg| msg.is_a?(String) ? { role: "user", content: msg } : msg } if messages.is_a?(Array)
-
         supervisor.chat(messages, &block)
       end
     end

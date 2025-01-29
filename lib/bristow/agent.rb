@@ -25,35 +25,13 @@ module Bristow
 
     def functions_for_openai
       functions.map do |function|
-        {
-          name: function.name,
-          description: function.description,
-          parameters: {
-            type: "object",
-            properties: function.parameters.transform_values { |type| parameter_type_for(type) },
-            required: function.parameters.keys.map(&:to_s)
-          }
-        }
+        function.to_openai_schema
       end
     end
 
     def chat(messages, &block)
       # Convert string message to proper format
       messages = [{ role: "user", content: messages }] if messages.is_a?(String)
-
-      # Convert array to array of hashes
-      messages = if messages.is_a?(Array)
-        messages.map do |msg|
-          case msg
-          when Hash
-            msg.transform_keys(&:to_sym)
-          else
-            raise ArgumentError, "Invalid message format: #{msg.inspect}"
-          end
-        end
-      else
-        messages
-      end
 
       messages = messages.dup
       messages.unshift(system_message_hash) if system_message

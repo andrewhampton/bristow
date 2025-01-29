@@ -10,10 +10,14 @@ module Bristow
       @description = description
       @parameters = parameters
       @block = block
+
+      if !parameters.has_key?(:type)
+        parameters[:type] = "object"
+      end
     end
 
     def call(**kwargs)
-      validate_parameters!(kwargs)
+      validate_required_parameters!(kwargs)
       @block.call(**kwargs)
     end
 
@@ -21,61 +25,16 @@ module Bristow
       {
         name: name,
         description: description,
-        parameters: {
-          type: "object",
-          properties: parameters_schema,
-          required: required_parameters
-        }
+        parameters: parameters
       }
     end
 
     private
 
-    def validate_parameters!(kwargs)
-      # Check for missing required parameters
-      missing = required_parameters - kwargs.keys
-      raise ArgumentError, "missing keyword: :#{missing.first}" if missing.any?
-
-      # Check parameter types
-      kwargs.each do |key, value|
-        expected_type = parameters[key].is_a?(Hash) ? parameters[key][:type] : parameters[key]
-        next unless expected_type.is_a?(Class) # Skip complex type definitions
-
-        unless value.is_a?(expected_type)
-          raise TypeError, "#{key} must be a #{expected_type}"
-        end
-      end
-    end
-
-    def parameters_schema
-      parameters.transform_values do |type|
-        if type.is_a?(Hash)
-          { type: ruby_type_to_json_type(type[:type]) }
-        else
-          { type: ruby_type_to_json_type(type) }
-        end
-      end
-    end
-
-    def required_parameters
-      parameters.reject { |_, type| type.is_a?(Hash) && type[:optional] }.keys
-    end
-
-    def ruby_type_to_json_type(type)
-      case type
-      when String, Class
-        case type.to_s
-        when "String" then "string"
-        when "Integer" then "integer"
-        when "Float" then "number"
-        when "TrueClass", "FalseClass", "Boolean" then "boolean"
-        when "Array" then "array"
-        when "Hash" then "object"
-        else "string" # Default to string for unknown types
-        end
-      else
-        "string" # Default to string for unknown types
-      end
+    def validate_required_parameters!(kwargs)
+      required_params = parameters.dig(:required) || []
+      missing = required_params.map(&:to_sym) - kwargs.keys.map(&:to_sym)
+      raise ArgumentError, "missing keyword: #{missing.first}" if missing.any?
     end
   end
 end

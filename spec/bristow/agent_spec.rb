@@ -63,14 +63,6 @@ RSpec.describe Bristow::Agent do
       expect(response.join).not_to be_empty
     end
 
-    it "accepts an array of string messages", vcr: true do
-      response = []
-      agent.chat(["Hello", "How are you?"]) do |part|
-        response << part
-      end
-      expect(response.join).not_to be_empty
-    end
-
     it "updates chat history", vcr: true do
       expect {
         agent.chat(messages, &block)
