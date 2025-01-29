@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 
 # Check if working directory is clean
 if [[ -n $(git status -s) ]]; then
