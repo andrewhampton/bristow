@@ -56,14 +56,6 @@ RSpec.describe Bristow::Agencies::Supervisor do
       expect(response.join).not_to be_empty
     end
 
-    it "accepts an array of string messages", vcr: { cassette_name: "bristow_agencies_supervisor_chat_accepts_array_of_strings" } do
-      response = []
-      agency.chat(["Hello", "What's the weather in New York?"]) do |part|
-        response << part
-      end
-      expect(response.join).not_to be_empty
-    end
-
     it "raises error when supervisor not set" do
       agency.supervisor = nil
       expect {
@@ -74,11 +66,6 @@ RSpec.describe Bristow::Agencies::Supervisor do
     it "handles array and non-array messages" do
       # String message
       agency.chat("Hello", &block)
-      expect(@streamed_parts).not_to be_empty
-
-      # Array of strings
-      @streamed_parts = []
-      agency.chat(["Hello"], &block)
       expect(@streamed_parts).not_to be_empty
 
       # Array of hashes

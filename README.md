@@ -50,9 +50,19 @@ puts conversation.last['content']
 weather = Bristow::Function.new(
   name: "get_weather",
   description: "Get the current weather for a location",
-  parameters: {
-    location: String,
-    unit: String
+  parameters: { 
+    properties: {
+      location: {
+        type: "string",
+        description: "The city and state, e.g. San Francisco, CA"
+      },
+      unit: {
+        type: "string",
+        enum: ["celsius", "fahrenheit"],
+        description: "The unit of temperature to return"
+      }
+    },
+    required: ["location"]
   }
 ) do |location:, unit: 'celsius'|
   # Implement your application logic here
@@ -71,6 +81,9 @@ weather_agent.chat("What's the weather like in London?") do |response_chunk|
   print response_chunk 
 end
 ```
+
+The `parameters` hash is passed directly through to OpenAI's API. You can see details about how to define parameters in [OpenAI's documentation for defining functions](https://platform.openai.com/docs/guides/function-calling#defining-functions).
+
 
 ### Multi-Agent System
 
@@ -100,6 +113,10 @@ agency.chat([
   print response_chunk
 end
 ```
+
+## Examples
+
+A few working examples are in the `examples/` directory. If you have `OPENAI_API_KEY` set in the environment, you can run the examples with with `bundle exec ruby examples/<example file>.rb` to get a taste of Bristow.
 
 ## Configuration
 

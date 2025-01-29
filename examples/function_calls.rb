@@ -9,8 +9,19 @@ weather = Bristow::Function.new(
   name: "get_weather",
   description: "Get the current weather for a location",
   parameters: {
-    location: String,
-    unit: String
+    type: "object",
+    properties: {
+      location: {
+        type: "string",
+        description: "The city and state, e.g. San Francisco, CA"
+      },
+      unit: {
+        type: "string",
+        enum: ["celsius", "fahrenheit"],
+        description: "The unit of temperature to return"
+      }
+    },
+    required: [:location]
   }
 ) do |location:, unit: 'celsius'|
   # Your weather API call here
