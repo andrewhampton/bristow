@@ -46,8 +46,16 @@ module Bristow
           name: "delegate_to",
           description: "Delegate a task to a specialized agent",
           parameters: {
-            agent_name: String,
-            message: String
+            properties: {
+              agent_name: {
+                type: "string",
+                description: "The name of the agent to delegate to"
+              },
+              message: {
+                type: "string",
+                description: "The instructions for the agent being delegated to"
+              }
+            }
           }
         ) do |agent_name:, message:|
           raise "No agency set for supervisor" unless agency
