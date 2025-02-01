@@ -20,37 +20,20 @@ Or install it yourself as:
 
 ## Usage
 
-### Simple Agent
-
-You can create agents without functions for basic tasks:
-
 ```ruby
 require 'bristow'
 
-storyteller = Bristow::Agent.new(
-  name: 'Sydney',
-  description: 'Agent for telling spy stories',
-  system_message: 'Given a topic, you will tell a brief spy story',
-)
-
-# Either stream the response with a block:
-storyteller.chat('Tell me a story about Cold War era Berlin') do |response_chunk|
-  print response_chunk # response_chunk will be the next chunk of text in the response from the model
+# Configure Bristow
+Bristow.configure do |config|
+  config.api_key = ENV['OPENAI_API_KEY']
 end
 
-# Or work with the entire conversation once it's complete:
-conversation = storyteller.chat('Tell me a story about Cold War era Berlin')
-puts conversation.last['content'] 
-```
-
-### Basic Agent with Functions
-
-```ruby
 # Define functions that the model can call
-weather = Bristow::Function.new(
-  name: "get_weather",
-  description: "Get the current weather for a location",
-  parameters: { 
+class WeatherLookup < Bristow::Function
+  name "get_weather"
+  description "Get the current weather for a location"
+  system_message "You are a weather forecast assistant. Given a location, you will look up the weather forecast and provide a brief description."
+  parameters { 
     properties: {
       location: {
         type: "string",
@@ -64,52 +47,74 @@ weather = Bristow::Function.new(
     },
     required: ["location"]
   }
-) do |location:, unit: 'celsius'|
-  # Implement your application logic here
-  { temperature: 22, unit: unit }
+
+  def perform(location:, unit: 'celsius')
+    # Implement your application logic here
+    { temperature: 22, unit: unit }
+  end
 end
 
 # Create an agent with access to the function
-weather_agent = Bristow::Agent.new(
-  name: "WeatherAssistant",
-  description: "Helps with weather-related queries",
-  functions: [weather]
-)
+class Forecaster < Bristow::Agent
+  name "WeatherAssistant"
+  description "Helps with weather-related queries"
+  system_message "You are a weather forecast assistant. Given a location, you will look up the weather forecast and provide a brief description."
+  functions [WeatherLookup]
+end
 
 # Chat with the agent
-weather_agent.chat("What's the weather like in London?") do |response_chunk|
+forecaster_agent = Forecaster.new
+forecaster_agent.chat("What's the weather like in London?") do |response_chunk|
+  # As the agent streams the response, print each chunk
   print response_chunk 
 end
-```
 
-The `parameters` hash is passed directly through to OpenAI's API. You can see details about how to define parameters in [OpenAI's documentation for defining functions](https://platform.openai.com/docs/guides/function-calling#defining-functions).
+# Create a more complex agent that can access multiple functions
+class WeatherDatabase < Bristow::Function
+  name "store_weather"
+  description "Store weather data in the database"
+  parameters {
+    properties: {
+      location: {
+        type: "string",
+        description: "The city and state, e.g. San Francisco, CA"
+      },
+      temperature: {
+        type: "number",
+        description: "The temperature in the specified unit"
+      },
+      unit: {
+        type: "string",
+        enum: ["celsius", "fahrenheit"],
+        description: "The unit of temperature"
+      }
+    },
+    required: ["location", "temperature", "unit"]
+  }
 
+  def self.perform(location:, temperature:, unit:)
+    # Store the weather data in your database
+    { status: "success", message: "Weather data stored for #{location}" }
+  end
+end
 
-### Multi-Agent System
+class WeatherManager < Bristow::Agent
+  name "WeatherManager"
+  description "Manages weather data collection and storage"
+  system_message "You are a weather data management assistant. You can look up weather data and store it in the database."
+  functions [WeatherLookup, WeatherDatabase]
+end
 
-You can coordinate multiple agents using `Bristow::Agency`. Bristow includes a few common patterns, including the one like [langchain's multi-agent supervisor](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/). Here's how to use the supervisor agency:
+# Create an agency to coordinate multiple agents. The supervisor agent is a
+# pre-configured agency that includes a supervisor agent that knows how to
+# delegate tasks to other agents
+class WeatherAgency < Bristow::Agencies::Supervisor
+  agents [Forecaster, WeatherManager]
+end
 
-```ruby
-# Create specialized agents. These can be configured with functions, as well.
-pirate_talker = Bristow::Agent.new(
-  name: "PirateSpeaker",
-  description: "Agent for translating input to pirate-speak",
-  system_message: 'Given a text, you will translate it to pirate-speak.',
-)
-
-travel_agent = Bristow::Agent.new(
-  name: "TravelAgent",
-  description: "Agent for planning trips",
-  system_message: 'Given a destination, you will respond with a detailed itenerary that includes only dates, times, and locations.',
-)
-
-# Create a supervisor agency to coordinate the agents
-agency = Bristow::Agencies::Supervisor.create(agents: [pirate_talker, travel_agent])
-
-# The supervisor will automatically delegate to the appropriate agent as needed before generating a response for the user.
-agency.chat([
-  { role: "user", content: "I want to go to New York. Tell me about it as if you were a pirate." }
-]) do |response_chunk|
+# Use the agency to coordinate multiple agents
+agency = WeatherAgency.new
+agency.chat("Can you check the weather in London and store it in the database?") do |response_chunk|
   print response_chunk
 end
 ```
@@ -128,7 +133,7 @@ Bristow.configure do |config|
   config.openai_api_key = 'your-api-key'
   
   # The default model to use (defaults to 'gpt-4o-mini')
-  config.default_model = 'gpt-4o'
+  config.model = 'gpt-4o'
   
   # Logger to use (defaults to Logger.new(STDOUT))
   config.logger = Rails.logger
