@@ -17,7 +17,7 @@ VCR.configure do |config|
   # Filter sensitive data
   config.filter_sensitive_data("<OPENAI_API_KEY>") { ENV["OPENAI_API_KEY"] }
   config.filter_sensitive_data("<OPENAI_ORG_ID>") { ENV["OPENAI_ORG_ID"] }
-  
+
   # Filter organization IDs
   config.filter_sensitive_data("<OPENAI_ORG>") do |interaction|
     interaction.response.headers["Openai-Organization"]&.first
@@ -40,7 +40,7 @@ VCR.configure do |config|
 
   # Allow VCR to record new episodes when cassettes don't exist
   config.default_cassette_options = {
-    record: :new_episodes,
+    record: :none,
     match_requests_on: [:method, :uri],
     allow_playback_repeats: true
   }
@@ -48,6 +48,17 @@ VCR.configure do |config|
   # Don't raise errors when cassettes don't exist
   config.allow_http_connections_when_no_cassette = true
 end
+
+# Configure WebMock to disallow real network connections
+WebMock.disable_net_connect!(
+  allow_localhost: true,
+  message: "Real HTTP connections are disabled in tests. Use VCR to mock this request:\n" \
+          "describe 'your test', :vcr do\n" \
+          "  it 'does something' do\n" \
+          "    # your test code\n" \
+          "  end\n" \
+          "end"
+)
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -73,4 +84,8 @@ RSpec.configure do |config|
       example.run
     end
   end
+end
+
+Bristow.configure do |config|
+  config.logger = Logger.new(File::NULL)
 end
