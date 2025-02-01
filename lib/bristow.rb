@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-require 'debug'
 require 'openai'
 require 'logger'
 require 'json'
