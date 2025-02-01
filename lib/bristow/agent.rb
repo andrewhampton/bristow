@@ -1,19 +1,32 @@
-require 'openai'
-require 'logger'
-require 'json'
-
 module Bristow
   class Agent
-    attr_reader :name, :description, :functions, :system_message, :chat_history
+    include Bristow::Sgetter
 
-    def initialize(name:, description:, system_message: nil, functions: [], model: Bristow.configuration.default_model)
+    sgetter :name
+    sgetter :description
+    sgetter :system_message
+    sgetter :functions, default: []
+    sgetter :model, default: -> { Bristow.configuration.model }
+    sgetter :client, default: -> { Bristow.configuration.client }
+    sgetter :logger, default: -> { Bristow.configuration.logger }
+    attr_reader :chat_history
+
+    def initialize(
+      name: self.class.name,
+      description: self.class.name,
+      system_message: self.class.system_message,
+      functions: self.class.functions.dup,
+      model: self.class.model,
+      client: self.class.client,
+      logger: self.class.logger
+    )
       @name = name
       @description = description
       @system_message = system_message
       @functions = functions
-      @logger = Bristow.configuration.logger
-      @client = Bristow.configuration.client
       @model = model
+      @client = client
+      @logger = logger
       @chat_history = []
     end
 
@@ -24,9 +37,11 @@ module Bristow
     end
 
     def functions_for_openai
-      functions.map do |function|
-        function.to_openai_schema
-      end
+      functions.map(&:to_openai_schema)
+    end
+
+    def self.chat(...)
+      new.chat(...)
     end
 
     def chat(messages, &block)
@@ -40,7 +55,7 @@ module Bristow
 
       loop do
         params = {
-          model: @model,
+          model: model,
           messages: messages
         }
 
@@ -49,10 +64,11 @@ module Bristow
           params[:function_call] = "auto"
         end
 
+        logger.debug("Calling OpenAI API with params: #{params}")
         response_message = if block_given?
           handle_streaming_chat(params, &block)
         else
-          response = @client.chat(parameters: params)
+          response = client.chat(parameters: params)
           response.dig("choices", 0, "message")
         end
 
@@ -80,7 +96,7 @@ module Bristow
 
       messages
     rescue Faraday::BadRequestError, Faraday::ResourceNotFound => e
-      @logger.error("Error calling OpenAI API: #{e.response[:body]}")
+      logger.error("Error calling OpenAI API: #{e.response[:body]}")
       raise
     end
 
@@ -100,6 +116,7 @@ module Bristow
           if delta.dig("function_call", "name")
             function_name = delta.dig("function_call", "name")
           end
+
           if delta.dig("function_call", "arguments")
             function_args += delta.dig("function_call", "arguments")
           end
@@ -111,7 +128,7 @@ module Bristow
       end
 
       params[:stream] = stream_proc
-      @client.chat(parameters: params)
+      client.chat(parameters: params)
 
       if function_name
         {
@@ -134,21 +151,6 @@ module Bristow
         "role" => "system",
         "content" => system_message
       }
-    end
-
-    def parameter_type_for(type)
-      case type.to_s
-      when "Integer", "Fixnum"
-        { type: "integer" }
-      when "Float"
-        { type: "number" }
-      when "String"
-        { type: "string" }
-      when "TrueClass", "FalseClass", "Boolean"
-        { type: "boolean" }
-      else
-        { type: "string" }
-      end
     end
   end
 end

@@ -1,41 +1,81 @@
 # frozen_string_literal: true
 
 RSpec.describe Bristow::Agent do
-  let(:name) { "TestAgent" }
-  let(:description) { "A test agent" }
-  let(:system_message) { "You are a test agent that helps with testing. When asked to test something, always use the test_function." }
-  let(:model) { "gpt-3.5-turbo" }
-  let(:function) do
-    Bristow::Function.new(
-      name: "test_function",
-      description: "A test function",
-      parameters: { param: String }
-    ) { |param:| { result: param } }
+  before(:all) do
+    @test_function = Class.new(Bristow::Function) do
+      name "test_function"
+      description "A test function"
+      parameters({
+        type: "object",
+        properties: {
+          param: {
+            type: "string",
+            description: "A test parameter"
+          }
+        },
+        required: ["param"]
+      })
+
+      def perform(param:)
+        { result: param }
+      end
+    end
   end
 
-  subject(:agent) do
-    described_class.new(
-      name: name,
-      description: description,
-      system_message: system_message,
-      functions: [function],
-      model: model
-    )
+  let(:test_agent) do
+    test_function = @test_function
+    Class.new(described_class) do
+      name "TestAgent"
+      description "A test agent"
+      system_message "You are a test agent that helps with testing. When asked to test something, always use the test_function."
+      model "gpt-3.5-turbo"
+      functions [test_function]
+    end
   end
 
-  describe "#initialize" do
-    it "creates an agent with the given attributes" do
-      expect(agent.name).to eq(name)
-      expect(agent.description).to eq(description)
-      expect(agent.chat_history).to be_empty
+  subject(:agent) { test_agent.new }
+
+  describe ".name" do
+    it "sets and gets the agent name" do
+      expect(test_agent.name).to eq("TestAgent")
+    end
+  end
+
+  describe ".description" do
+    it "sets and gets the agent description" do
+      expect(test_agent.description).to eq("A test agent")
+    end
+  end
+
+  describe ".system_message" do
+    it "sets and gets the system message" do
+      expect(test_agent.system_message).to include("You are a test agent")
+    end
+  end
+
+  describe ".model" do
+    it "sets and gets the model" do
+      expect(test_agent.model).to eq("gpt-3.5-turbo")
     end
 
-    it "defaults functions to empty array" do
-      agent = described_class.new(
-        name: name,
-        description: description
-      )
-      expect(agent.functions).to be_empty
+    it "defaults to configuration default model" do
+      agent_class = Class.new(described_class) do
+        name "DefaultModelAgent"
+      end
+      expect(agent_class.model).to eq(Bristow.configuration.model)
+    end
+  end
+
+  describe ".functions" do
+    it "sets and gets the functions" do
+      expect(test_agent.functions).to eq([@test_function])
+    end
+
+    it "defaults to empty array" do
+      agent_class = Class.new(described_class) do
+        name "NoFunctionsAgent"
+      end
+      expect(agent_class.functions).to eq([])
     end
   end
 
