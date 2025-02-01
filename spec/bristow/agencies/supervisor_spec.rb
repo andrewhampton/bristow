@@ -90,7 +90,7 @@ RSpec.describe Bristow::Agencies::Supervisor do
   describe "delegation" do
     let(:delegate_fn) { agency.supervisor.functions.find { |f| f.name == "delegate_to" } }
 
-    it "delegates to the specified agent" do
+    it "delegates to the specified agent", :vcr do
       response = delegate_fn.call(
         agent_name: "TestAgent",
         message: "Hello"
