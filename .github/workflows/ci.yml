@@ -3,20 +3,6 @@ name: CI
 on: [push]
 
 jobs:
-  changelog:
-    name: Changelog
-    runs-on: ubuntu-latest
-    steps:
-    - name: Ensure changelog has been changed in this PR
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        changed_files=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/andrewhampton/bristow/compare/main...${GITHUB_SHA} | jq '.files[] | select(.filename == "CHANGELOG.md") | .filename' | tr -d '"')
-        if [ -z "$changed_files" ]; then
-          echo "CHANGELOG.md was not updated in this PR. Please add a changelog entry."
-          exit 1
-        fi
-
   test:
     name: Test on Ruby ${{ matrix.ruby-version }}
     runs-on: ubuntu-latest
