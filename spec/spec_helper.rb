@@ -45,8 +45,8 @@ VCR.configure do |config|
     allow_playback_repeats: true
   }
 
-  # Don't raise errors when cassettes don't exist
-  config.allow_http_connections_when_no_cassette = true
+  # Never allow real HTTP connections
+  config.allow_http_connections_when_no_cassette = false
 end
 
 # Configure WebMock to disallow real network connections
