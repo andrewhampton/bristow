@@ -4,6 +4,7 @@ on: [push]
 
 jobs:
   test:
+    name: Test on Ruby ${{ matrix.ruby-version }}
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: dummy-key-for-tests
