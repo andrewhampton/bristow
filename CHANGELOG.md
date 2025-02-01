@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [0.3.1] - 2025-02-01
+
+- Dropped errant require of 'debug'
+
 ## [0.3.0] - 2025-02-01
 
 - Major update to the API. Now primarily class based.
