@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+- Require updating CHANGELOG.md in each PR
+
 ## [0.2.1] - 2025-01-29
 
 - Fixed schema for supervisor agent function call
