@@ -1,58 +1,57 @@
 # frozen_string_literal: true
 
 RSpec.describe Bristow::Function do
-  let(:name) { "test_function" }
-  let(:description) { "A test function" }
-  let(:parameters) do
-    {
-      properties: {
-        param1: {
-          type: "string",
-          description: "First parameter"
+  let(:test_function_class) do
+    Class.new(described_class) do
+      name "test_function"
+      description "A test function"
+      parameters({
+        properties: {
+          param1: {
+            type: "string",
+            description: "First parameter"
+          },
+          param2: {
+            type: "integer",
+            description: "Second parameter"
+          },
+          param3: {
+            type: "string",
+            description: "Optional third parameter"
+          }
         },
-        param2: {
-          type: "integer",
-          description: "Second parameter"
-        },
-        param3: {
-          type: "string",
-          description: "Optional third parameter"
-        }
-      },
-      required: ["param1", "param2"]
-    }
-  end
-  let(:block) { ->(param1:, param2:, param3: nil) { { result: [param1, param2, param3] } } }
+        required: ["param1", "param2"]
+      })
 
-  subject(:function) do
-    described_class.new(
-      name: name,
-      description: description,
-      parameters: parameters,
-      &block
-    )
-  end
-
-  describe "#initialize" do
-    it "creates a function with the given attributes" do
-      expect(function.name).to eq(name)
-      expect(function.description).to eq(description)
-      expect(function.parameters).to eq(parameters)
+      def perform(param1:, param2:, param3: nil)
+        { result: [param1, param2, param3] }
+      end
     end
+  end
 
-    it "raises an error without a block" do
-      expect {
-        described_class.new(
-          name: name,
-          description: description,
-          parameters: parameters
-        )
-      }.to raise_error(ArgumentError, "block is required")
+  subject(:function) { test_function_class.new }
+
+  describe ".name" do
+    it "sets and gets the function name" do
+      expect(test_function_class.name).to eq("test_function")
+    end
+  end
+
+  describe ".description" do
+    it "sets and gets the function description" do
+      expect(test_function_class.description).to eq("A test function")
+    end
+  end
+
+  describe ".parameters" do
+    it "sets and gets the function parameters" do
+      expect(test_function_class.parameters[:properties]).to include(:param1, :param2, :param3)
+      expect(test_function_class.parameters[:required]).to eq(["param1", "param2"])
     end
   end
 
   describe "#call" do
-    it "calls the block with the given parameters" do
+    it "calls perform with the given parameters" do
       result = function.call(param1: "test", param2: 123)
       expect(result).to eq({ result: ["test", 123, nil] })
     end
@@ -63,9 +62,16 @@ RSpec.describe Bristow::Function do
     end
 
     it "raises an error for missing required parameters" do
+      result =  function.call(param1: "test")
+      expect(result).to eq("missing parameters: [:param2]")
+    end
+  end
+
+  describe "#perform" do
+    it "raises NotImplementedError in the base class" do
       expect {
-        function.call(param1: "test")
-      }.to raise_error(ArgumentError, /missing keyword: param2/)
+        described_class.new.perform
+      }.to raise_error(NotImplementedError, /must be implemented/)
     end
   end
 
@@ -73,9 +79,9 @@ RSpec.describe Bristow::Function do
     it "returns the correct schema format" do
       schema = function.to_openai_schema
       expect(schema).to eq({
-        name: name,
-        description: description,
-        parameters: parameters
+        name: "test_function",
+        description: "A test function",
+        parameters: test_function_class.parameters
       })
     end
   end

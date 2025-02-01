@@ -2,39 +2,42 @@
 
 module Bristow
   class Function
-    attr_reader :name, :description, :parameters
+    include Bristow::Sgetter
+    include Bristow::Delegate
 
-    def initialize(name:, description:, parameters:, &block)
-      raise ArgumentError, "block is required" unless block_given?
-      @name = name
-      @description = description
-      @parameters = parameters
-      @block = block
+    sgetter :name
+    sgetter :description
+    sgetter :parameters, default: {}
 
-      if !parameters.has_key?(:type)
-        parameters[:type] = "object"
-      end
-    end
-
-    def call(**kwargs)
-      validate_required_parameters!(kwargs)
-      @block.call(**kwargs)
-    end
-
-    def to_openai_schema
+    def self.to_openai_schema
       {
         name: name,
         description: description,
         parameters: parameters
       }
     end
+    delegate :to_openai_schema, to: :class
+
+    def self.call(...)
+      new.call(...)
+    end
+
+    def call(**kwargs)
+      validation_errors = validate_required_parameters!(kwargs)
+      return validation_errors unless validation_errors.nil?
+      perform(**kwargs)
+    end
+
+    def perform(...)
+      raise NotImplementedError, "#{self.class.name}#perform must be implemented"
+    end
 
     private
 
     def validate_required_parameters!(kwargs)
-      required_params = parameters.dig(:required) || []
+      required_params = self.class.parameters.dig(:required) || []
       missing = required_params.map(&:to_sym) - kwargs.keys.map(&:to_sym)
-      raise ArgumentError, "missing keyword: #{missing.first}" if missing.any?
+      "missing parameters: #{missing.inspect}" if missing.any?
     end
   end
 end
