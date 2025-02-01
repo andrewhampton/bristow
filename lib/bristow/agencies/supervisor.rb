@@ -1,30 +1,26 @@
 module Bristow
   module Agencies
     class Supervisor < Agency
-      attr_accessor :supervisor
+      attr_reader :supervisor
 
-      def self.create(agents: [])
-        agency = new(agents: agents)
-        supervisor = Agents::Supervisor.new(
-          available_agents: agents,
-          agency: agency
-        )
-        agency.supervisor = supervisor
-        agency.agents << supervisor
-        agency
-      end
+      sgetter :custom_instructions, default: nil
 
-      def initialize(agents: [])
+      def initialize(agents: self.class.agents.dup)
+        @custom_instructions = self.class.custom_instructions
         @agents = agents
-        @supervisor = nil  # Will be set by create
+        @supervisor = Agents::Supervisor.new(
+          child_agents: agents,
+          agency: self,
+          custom_instructions: custom_instructions
+        )
       end
 
       def chat(messages, &block)
-        raise "No supervisor set" unless supervisor
+        raise "Supervisor not set" unless supervisor
 
         # Convert string message to proper format
         messages = [{ role: "user", content: messages }] if messages.is_a?(String)
-        
+
         supervisor.chat(messages, &block)
       end
     end
