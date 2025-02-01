@@ -1,6 +1,3 @@
-require 'logger'
-require 'openai'
-
 module Bristow
   class Configuration
     attr_accessor :openai_api_key, :default_model, :logger
