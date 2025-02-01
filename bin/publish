@@ -12,7 +12,7 @@ next_version=$(gem bump --version "$1" --pretend --no-commit | awk '{print $4}')
 
 echo "NEXT VERSION: $next_version"
 
-if ! grep -q "## $next_version" CHANGELOG.md; then
+if ! grep -q "## \[$next_version\]" CHANGELOG.md; then
   echo "Error: Changelog is missing entry for $next_version"
   exit 1
 fi
@@ -25,4 +25,4 @@ read -p "Please review the proposed changes. Press enter when you're ready to ex
 # Actually release
 gem bump --version "$1" --push --tag --release
 
-gh release create "v$next_version" --generate-notes --latest --title "v$next_version" --verify-tag 
+gh release create "v$next_version" --generate-notes --latest --title "v$next_version" --verify-tag
