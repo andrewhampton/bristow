@@ -1,11 +1,11 @@
 module Bristow
   class Configuration
-    attr_accessor :openai_api_key, :default_model, :logger
+    attr_accessor :openai_api_key, :model, :logger
     attr_reader :client
 
     def initialize
       @openai_api_key = ENV['OPENAI_API_KEY']
-      @default_model = 'gpt-4o-mini'
+      @model = 'gpt-4o-mini'
       @logger = Logger.new(STDOUT)
       reset_client
     end
