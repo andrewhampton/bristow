@@ -18,106 +18,243 @@ Or install it yourself as:
 
     $ gem install bristow
 
-## Usage
+## Quick start
+
+The main ideas concepts of this gem are:
+
+- **Agents**: Basically an AI model wrapper with a baked in system prompt, instructing it what it should do.
+- **Functions**: code the AI model can call to work with data in your application.
+- **Agencies**: Systems of agents working together to accomplish a task for a user. A chat call to an agency may call any number of agents within the agency to accomplish the task defined by the user.
+
+Here's how you might define an agent that can lookup user information in your application to answer questions from an admin:
 
 ```ruby
 require 'bristow'
 
 # Configure Bristow
 Bristow.configure do |config|
-  config.api_key = ENV['OPENAI_API_KEY']
+  # Bristow will use ENV['OPENAI_API_KEY'] by default, but you can
+  # set a custom OpenAI API key with:
+  config.api_key = ENV['MY_OPENAI_KEY']
 end
 
-# Define functions that the model can call
-class WeatherLookup < Bristow::Function
-  name "get_weather"
-  description "Get the current weather for a location"
-  system_message "You are a weather forecast assistant. Given a location, you will look up the weather forecast and provide a brief description."
-  parameters { 
-    properties: {
-      location: {
-        type: "string",
-        description: "The city and state, e.g. San Francisco, CA"
-      },
-      unit: {
-        type: "string",
-        enum: ["celsius", "fahrenheit"],
-        description: "The unit of temperature to return"
-      }
-    },
-    required: ["location"]
-  }
+# Define functions that the model can call to interact with your app
+class UserSearch < Bristow::Function
+  # Name that will be provided to the AI model for function calls
+  name "user_search"
 
-  def perform(location:, unit: 'celsius')
-    # Implement your application logic here
-    { temperature: 22, unit: unit }
+  # Description for the AI model that it can use to determine when
+  # it should call this function
+  description "Allows searching for users by domain or email. You must provide at least one search param."
+
+  # API of the function that will be provided to the model.
+  # https://platform.openai.com/docs/guides/function-calling
+  parameters({ 
+    properties: {
+      domain: {
+        type: "string",
+        description: "Search users by email domain"
+      },
+      email: {
+        type: "string",
+        description: "Search users by email address"
+      }
+    }
+  })
+
+  # The implementation of this function. The AI model can choose
+  # whether or not to call this function, and this is the code that
+  # will execute if it does. It's how the AI works with data in 
+  # your application. 
+  def perform(domain: nil, email: nil)
+	query = { domain:, email: }.compact	
+    return "You must specify either domain or email for the user search" if query.empty?
+    
+	User.where(query).to_json
   end
 end
 
 # Create an agent with access to the function
-class Forecaster < Bristow::Agent
-  name "WeatherAssistant"
-  description "Helps with weather-related queries"
-  system_message "You are a weather forecast assistant. Given a location, you will look up the weather forecast and provide a brief description."
+class UserQueryAssistant < Bristow::Agent
+  name "UserQueryAssistant"
+  description "Helps with user-related queries"
+  system_message <<~MSG 
+    You are a user management assistant. 
+    Given a task by an end user, will work on their behalf using function calls to accomplish this task.
+  MSG
   functions [WeatherLookup]
 end
 
 # Chat with the agent
-forecaster_agent = Forecaster.new
-forecaster_agent.chat("What's the weather like in London?") do |response_chunk|
-  # As the agent streams the response, print each chunk
+user_query_assistant = UserQueryAssistant.new
+user_query_assistant.chat("Which users from Google have the fanciest sounding titles?") do |response_chunk|
+  # As the agent streams the response to this block. 
+  # This block with receive a few characters of the response
+  # at a time as the response streams from the API.  
   print response_chunk 
 end
+```
 
-# Create a more complex agent that can access multiple functions
-class WeatherDatabase < Bristow::Function
-  name "store_weather"
-  description "Store weather data in the database"
-  parameters {
+# Agents
+
+Agents provide you with an easy way to make calls to OpenAI. Once you've written the agent class, you can use it by calling `#chat` on any instance. The response from the AI is provided in two ways:
+
+```ruby
+conversation = UserQueryAssistant.new.chat('Who is the CEO of Google?')
+
+# At this point, `conversation` will contain the entire conversation history UserQueryAssistant had to work on the task on behalf of the user. This will include:
+#  - Original system prompt
+#  - The original user query
+#  - Any function calls made, and the responses to those function calls
+#  - The final response to the user
+puts conversation 
+
+# You can also provide a block to #chat that will stream only the final response to the user as it is generated by the AI:
+UserQueryAssistant.new.chat('Who is the CEO of Google?') do |text_chunk|
+  # This block will be called many times while the final user response 
+  # is being generated. In each call, `text_chunk` will contain the next
+  # few characters of the response, which you can render for your user.
+  puts text_chunk
+end
+```
+
+## Agent configuration
+
+Agents can be configured similar to something like `ActiveJob` or `Sidekiq`. You inherit from `Bristow::Agent` then call some helpers that will set the default config values. These defaults can be overridden when instantiating. 
+
+### Basic agent definition
+
+```ruby
+class Pirate < Bristow::Agent
+  name "Pirate"
+  description "An agent that assists the user while always talking like a pirate."
+  system_message "You are a helpful assistant that always talks like a pirate. Try to be as corny and punny as possible."
+end
+
+Pirate.new.chat("What's the best way to get from New York to Miami?") do |chunk|
+  puts chunk # => "Ahoy matey! If ye be lookin' to sail the seas from..."
+end
+
+```
+
+### Agent config options
+
+Here's an overview of all config options available when configuring an Agent:
+
+- `name`: The name of the agent
+- `description`: Description of what the agent can do. Can be used by agencies to provide information about the agent, informing the model when this agent should be used.
+- `system_message`: The system message to be sent before the first user message. This can be used to provide context to the model about the conversation.
+- `functions`: An array of `Bristow::Function` classes that the agent has access to. When working on the task assigned by the user, the AI model will have access to these functions, and will decide when a call to any function call is necessary.
+- `model`: The AI model to use. Defaults to `Bristow.configuration.model`.
+- `client`: The client to use. Defaults to `Bristow.configuration.client`.
+- `logger`: The logger class to use when logging debug information. Defaults to `Bristow.configuration.logger`.
+
+When instantiating an instance of an agent, you can override these options for a specific instaces like this:
+
+```ruby
+class Pirate < Bristow::Agent
+  ...
+end
+
+regular_pirate = Pirate.new
+smart_pirate = Pirate.new(model: 'o3')
+```
+
+# Functions
+
+You can think of functions as an API for your application for the AI model. When responding to a user's request, the AI model may respond directly, or choose to call functions you provide. 
+
+### Basic agent definition
+
+```ruby
+class TodoAssigner < Bristow::Function
+  name "todo_assigner"
+  description "Given a user ID and a todo ID, it will assign the todo to the user."
+  parameters({
     properties: {
-      location: {
+      user_id: {
         type: "string",
-        description: "The city and state, e.g. San Francisco, CA"
+        description: "ID of the user the todo should be assigned to"
       },
-      temperature: {
-        type: "number",
-        description: "The temperature in the specified unit"
-      },
-      unit: {
+      todo_id: {
         type: "string",
-        enum: ["celsius", "fahrenheit"],
-        description: "The unit of temperature"
+        description: "ID of the todo to assign"
+      },
+      reason: {
+        type: "string",
+        description: "Why you decided to assign this todo to the user"
       }
     },
-    required: ["location", "temperature", "unit"]
-  }
+    required: ["user_id", "todo_id"]
+  })
 
-  def self.perform(location:, temperature:, unit:)
-    # Store the weather data in your database
-    { status: "success", message: "Weather data stored for #{location}" }
+  def perform(user_id:, todo_id:, reason: '')
+    TodoUsers.create( user_id:, todo_id:, reason:)  
+  end
+end
+```
+
+### Function config options
+
+Functions have 3 config options, and a `#perform` function:
+
+- `name`: The name of the function. Provided to the AI model to help it call this function, and can be used to determine whether or not this function should be called.
+- `description`: A description of the function that will be provided to the AI model. Important for informing the model about what this function can do, so it's able to determine when to call this function.
+- `parameters`: The JSON schema definition of the function's API. See Open AI's [function docs](https://platform.openai.com/docs/guides/function-calling) for detailed information.
+- `#perform`: The perform function is your implementation for the function. You'll check out the parameters passed in from the model, and handle any operation it's requesting to do.
+
+# Agencies
+
+Agencies are sets of agents that can work together on a task. It's how we can implement something like AutoGen's [multi-agent design patterns](https://microsoft.github.io/autogen/stable/user-guide/core-user-guide/design-patterns/intro.html) in Ruby.
+
+There've very little going on in the base agent class. The long term goal of this gem is to pre-package common patterns. We currently only have the Supervisor pattern pre-packaged. It's probably best to start there. However, once you're ready to build your own multi-agent pattern, here's what you need to know.
+
+The base agency only has 3 items in it's public API:
+
+- `agents`: A config option that holds the list of `Agents` it can work with.
+- `#chat`: The chat method that is the entry point for the user's task. It raises a `NotImplementedError` in the base class, so it's up to you to implement the interaction pattern unless you want to use a pre-packaged agency.
+- `#find_agent(name)`: A helper function for facilitating hand-offs between agents.
+### Agency definition
+
+```ruby
+# We'll name this agency Sterling Cooper to
+# keep in line with our out of date TV show
+# reference naming convention.
+class SterlingCooper < Agency
+  agents [DonDraper, PeggyOlson, PeteCampbell]
+
+  def chat(messages, &block)
+    # Here's where you'd implement the multi-agent patternn
+    # In this example, we'll just do a workflow, where we
+    # loop through each agent and allow them to respond once.
+    # This sort of simple workflow could work if you want a
+    # specific set of steps to be repeated every time.
+    agents.each do |agent|
+	    messages = agent.chat(messages, &block)
+	end
+
+	messages
   end
 end
 
-class WeatherManager < Bristow::Agent
-  name "WeatherManager"
-  description "Manages weather data collection and storage"
-  system_message "You are a weather data management assistant. You can look up weather data and store it in the database."
-  functions [WeatherLookup, WeatherDatabase]
-end
-
-# Create an agency to coordinate multiple agents. The supervisor agent is a
-# pre-configured agency that includes a supervisor agent that knows how to
-# delegate tasks to other agents
-class WeatherAgency < Bristow::Agencies::Supervisor
-  agents [Forecaster, WeatherManager]
-end
-
-# Use the agency to coordinate multiple agents
-agency = WeatherAgency.new
-agency.chat("Can you check the weather in London and store it in the database?") do |response_chunk|
-  print response_chunk
-end
+campaign = SterlingCooper.new.chat("Please come up with an ad campaign for the Bristow gem")
 ```
+
+# Pre-packaged agencies
+
+## Supervisor Agency Overview
+
+The supervisor agency implements a pattern something like [LangChain's Multi-agent supervisor pattern](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/). You provide an array of agents, and a pre-packaged Supervisor agent will handle:
+
+1. Receive the task from the user
+2. Analyze which agent you've provided might be best suited to handle the next step of the work
+3. Call that agent
+4. Repeat agent calls until it believes the task is complete
+5. Craft a final answer to the end user
+
+This can be useful when building a chat bot for your application. You can build out the agents and functions that interact with different parts of your system, a reporting agent, a user management agent, etc. You then throw them all together in in a supervisor agency, and expose a chat UI for admins. This chat UI would then be allow the AI model to interact with your application.
+
+You can see `examples/basic_agency.rb` for example code.
 
 ## Examples
 
