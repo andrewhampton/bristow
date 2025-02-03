@@ -5,7 +5,7 @@ module Bristow
     include Bristow::Sgetter
     include Bristow::Delegate
 
-    sgetter :name
+    sgetter :name, default: -> { self.class.name }
     sgetter :description
     sgetter :parameters, default: {}
 
