@@ -44,10 +44,6 @@ module Bristow
       new.chat(...)
     end
 
-    def self.chat(...)
-      new.chat(...)
-    end
-
     def chat(messages, &block)
       # Convert string message to proper format
       messages = [{ role: "user", content: messages }] if messages.is_a?(String)
