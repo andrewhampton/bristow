@@ -3,6 +3,7 @@
 - Update the README to make it flow a bit better.
 - Add .chat to Agent
 - Give functions a default name that is the name of the class
+- Add the workflow agency
 
 ## [0.3.1] - 2025-02-01
 

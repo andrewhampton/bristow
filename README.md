@@ -240,9 +240,9 @@ end
 campaign = SterlingCooper.new.chat("Please come up with an ad campaign for the Bristow gem")
 ```
 
-# Pre-packaged agencies
+## Pre-packaged agencies
 
-## Supervisor Agency Overview
+### Supervisor Agency Overview
 
 The supervisor agency implements a pattern something like [LangChain's Multi-agent supervisor pattern](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/). You provide an array of agents, and a pre-packaged Supervisor agent will handle:
 
@@ -255,6 +255,16 @@ The supervisor agency implements a pattern something like [LangChain's Multi-age
 This can be useful when building a chat bot for your application. You can build out the agents and functions that interact with different parts of your system, a reporting agent, a user management agent, etc. You then throw them all together in in a supervisor agency, and expose a chat UI for admins. This chat UI would then be allow the AI model to interact with your application.
 
 You can see `examples/basic_agency.rb` for example code.
+
+### Worfkflow Agency Overview
+
+The workflow agency is a simple pattern that allows you to define a set of steps that should be repeated every time a user interacts with the agency. This can be useful when you have a specific set of steps that should be repeated every time a user interacts with the agency. It will:
+
+1. Receive the task from the user
+2. Call each agent in order
+3. Stream the response from the last agent in the series
+
+You can see `examples/workflow_agency.rb` for example code.
 
 ## Examples
 
