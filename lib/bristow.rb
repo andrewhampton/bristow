@@ -14,6 +14,10 @@ require_relative "bristow/agents/supervisor"
 require_relative "bristow/agency"
 require_relative "bristow/agencies/supervisor"
 require_relative "bristow/agencies/workflow"
+require_relative "bristow/termination"
+require_relative "bristow/terminations/max_messages"
+require_relative "bristow/terminations/timeout"
+require_relative "bristow/terminations/can_not_stop_will_not_stop"
 
 module Bristow
   class Error < StandardError; end
