@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+- Drop VCR in favor of WebMock for testing
+
 ## [0.4.0] - 2025-02-15
 
 - Update the README to make it flow a bit better.

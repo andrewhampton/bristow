@@ -49,6 +49,48 @@ RSpec.describe Bristow::Agencies::Workflow do
       expect(workflow.chat(messages)).to eq(messages)
     end
 
+    it "processes messages through all agents" do
+      result = workflow.chat(messages, &block)
+      expect(result).to eq([
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Agent One Response" },
+        { role: "assistant", content: "Agent Two Response" }
+      ])
+    end
+
+    it "only streams output from the last agent" do
+      workflow.chat(messages, &block)
+      expect(@streamed_parts).to eq(["Agent Two Response"])
+    end
+
+    it "handles agents that don't accept blocks" do
+      workflow = described_class.new(agents: [test_agent_one.new])
+      
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          }
+        )
+        .to_return(
+          status: 200,
+          headers: { 'Content-Type' => 'application/json' },
+          body: {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "Response"
+                }
+              }
+            ]
+          }.to_json
+        )
+
+      expect { workflow.chat(messages, &block) }.not_to raise_error
+    end
+
     it "processes messages through all agents in sequence" do
       result = workflow.chat(messages, &block)
       expect(result).to eq([
