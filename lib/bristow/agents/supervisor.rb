@@ -24,12 +24,13 @@ module Bristow
 
       sgetter :custom_instructions, default: nil
 
-      def initialize(child_agents:, agency:, custom_instructions: nil)
+      def initialize(child_agents:, agency:, custom_instructions: nil, termination: self.class.termination)
         super()
         @custom_instructions = custom_instructions || self.class.custom_instructions
         @system_message = build_system_message(child_agents)
         @agency = agency
         @custom_instructions = custom_instructions || self.class.custom_instructions
+        @termination = termination
         agency.agents << self
         functions << Functions::Delegate.new(self, agency)
       end

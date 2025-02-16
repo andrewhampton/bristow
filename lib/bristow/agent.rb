@@ -9,6 +9,7 @@ module Bristow
     sgetter :model, default: -> { Bristow.configuration.model }
     sgetter :client, default: -> { Bristow.configuration.client }
     sgetter :logger, default: -> { Bristow.configuration.logger }
+    sgetter :termination, default: -> { Bristow::Terminations::MaxMessages.new(100) }
     attr_reader :chat_history
 
     def initialize(
@@ -18,7 +19,8 @@ module Bristow
       functions: self.class.functions.dup,
       model: self.class.model,
       client: self.class.client,
-      logger: self.class.logger
+      logger: self.class.logger,
+      termination: self.class.termination
     )
       @name = name
       @description = description
@@ -28,6 +30,7 @@ module Bristow
       @client = client
       @logger = logger
       @chat_history = []
+      @termination = termination
     end
 
     def handle_function_call(name, arguments)
@@ -53,7 +56,7 @@ module Bristow
 
       @chat_history = messages.dup
 
-      loop do
+      while termination.continue?(messages) do
         params = {
           model: model,
           messages: messages
