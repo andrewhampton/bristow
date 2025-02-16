@@ -13,6 +13,7 @@ require_relative "bristow/agent"
 require_relative "bristow/agents/supervisor"
 require_relative "bristow/agency"
 require_relative "bristow/agencies/supervisor"
+require_relative "bristow/agencies/workflow"
 
 module Bristow
   class Error < StandardError; end
