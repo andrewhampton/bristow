@@ -5,8 +5,8 @@ module Bristow
 
       sgetter :custom_instructions, default: nil
 
-      def initialize(agents: self.class.agents.dup)
-        @custom_instructions = self.class.custom_instructions
+      def initialize(agents: self.class.agents.dup, custom_instructions: self.class.custom_instructions)
+        @custom_instructions = custom_instructions
         @agents = agents
         @supervisor = Agents::Supervisor.new(
           child_agents: agents,

@@ -87,7 +87,35 @@ RSpec.describe Bristow::Agent do
       @streamed_parts = []
     end
 
-    it "sends messages to OpenAI and streams the response", vcr: { cassette_name: "Bristow_Agent_chat_sends_messages_to_OpenAI_and_streams_the_response" } do
+    it "sends messages to OpenAI and streams the response" do
+      chunks = [
+        { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Hello" } }] },
+        { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { content: "! I'm" } }] },
+        { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { content: " here to help." } }] },
+        { id: "4", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+      ]
+
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          },
+          body: hash_including(
+            messages: array_including(
+              hash_including("role" => "user", "content" => "Hello")
+            ),
+            stream: true
+          )
+        )
+        .to_return(
+          status: 200,
+          headers: {
+            'Content-Type' => 'text/event-stream',
+            'Transfer-Encoding' => 'chunked'
+          },
+          body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join)
+
       response = []
       agent.chat([{ role: "user", content: "Hello" }]) do |part|
         response << part
@@ -95,7 +123,35 @@ RSpec.describe Bristow::Agent do
       expect(response.join).to include("Hello")
     end
 
-    it "accepts a string message", vcr: { cassette_name: "Bristow_Agent_chat_accepts_string_message" } do
+    it "accepts a string message" do
+      chunks = [
+        { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Hi" } }] },
+        { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { content: " there" } }] },
+        { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { content: "! How can I help?" } }] },
+        { id: "4", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+      ]
+
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          },
+          body: hash_including(
+            messages: array_including(
+              hash_including("role" => "user", "content" => "Hello")
+            ),
+            stream: true
+          )
+        )
+        .to_return(
+          status: 200,
+          headers: {
+            'Content-Type' => 'text/event-stream',
+            'Transfer-Encoding' => 'chunked'
+          },
+          body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join)
+
       response = []
       agent.chat("Hello") do |part|
         response << part
@@ -103,16 +159,178 @@ RSpec.describe Bristow::Agent do
       expect(response.join).not_to be_empty
     end
 
-    it "updates chat history", vcr: true do
+    it "updates chat history" do
+      chunks = [
+        { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Test" } }] },
+        { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { content: " response" } }] },
+        { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+      ]
+
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          },
+          body: hash_including(stream: true)
+        )
+        .to_return(
+          status: 200,
+          headers: {
+            'Content-Type' => 'text/event-stream',
+            'Transfer-Encoding' => 'chunked'
+          },
+          body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join)
+
       expect {
         agent.chat(messages, &block)
       }.to change { agent.chat_history.length }.by_at_least(1)
     end
 
+    it "handles non-streaming responses" do
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          },
+          body: hash_including(
+            messages: array_including(
+              hash_including("role" => "user", "content" => "Hello")
+            )
+          )
+        )
+        .to_return(
+          status: 200,
+          headers: { 'Content-Type' => 'application/json' },
+          body: {
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "Hello! How can I help you?"
+                }
+              }
+            ]
+          }.to_json
+        )
+
+      response = agent.chat("Hello")
+      expect(response).to include(
+        a_hash_including(
+          "role" => "assistant",
+          "content" => "Hello! How can I help you?"
+        )
+      )
+    end
+
+    it "handles API errors" do
+      stub_request(:post, "https://api.openai.com/v1/chat/completions")
+        .with(
+          headers: {
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer test_api_key'
+          }
+        )
+        .to_return(
+          status: 400,
+          headers: { 'Content-Type' => 'application/json' },
+          body: { error: { message: "Invalid request" } }.to_json
+        )
+
+      expect { agent.chat("Hello") }.to raise_error(Faraday::BadRequestError)
+    end
+
     context "with function calls" do
       let(:messages) { [{ "role" => "user", "content" => "Please test the value 'example'" }] }
 
-      it "handles function calls from the model", vcr: true do
+      it "raises error when function is not found" do
+        chunks = [
+          { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", function_call: { name: "nonexistent_function" } } }] },
+          { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { function_call: { arguments: '{}' } } }] },
+          { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "function_call" }] }
+        ]
+
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .with(
+            headers: {
+              'Content-Type' => 'application/json',
+              'Authorization' => 'Bearer test_api_key'
+            }
+          )
+          .to_return(
+            status: 200,
+            headers: {
+              'Content-Type' => 'text/event-stream',
+              'Transfer-Encoding' => 'chunked'
+            },
+            body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join
+          )
+
+        expect { agent.chat(messages, &block) }.to raise_error(ArgumentError, /Function nonexistent_function not found/)
+      end
+
+      it "handles function calls from the model" do
+        # First request returns a function call
+        function_call_chunks = [
+          { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", function_call: { name: "test_function" } } }] },
+          { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { function_call: { arguments: '{"param":' } } }] },
+          { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { function_call: { arguments: '"example"}' } } }] },
+          { id: "4", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "function_call" }] }
+        ]
+
+        # Second request returns a regular message
+        final_response_chunks = [
+          { id: "5", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Function call completed" } }] },
+          { id: "6", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+        ]
+
+        # Stub first request that returns function call
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .with(
+            headers: {
+              'Content-Type' => 'application/json',
+              'Authorization' => 'Bearer test_api_key'
+            },
+            body: hash_including(
+              messages: array_including(
+                hash_including("role" => "user", "content" => "Please test the value 'example'")
+              ),
+              stream: true
+            )
+          )
+          .to_return(
+            status: 200,
+            headers: {
+              'Content-Type' => 'text/event-stream',
+              'Transfer-Encoding' => 'chunked'
+            },
+            body: function_call_chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join
+          )
+
+        # Stub second request that returns final response
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .with(
+            headers: {
+              'Content-Type' => 'application/json',
+              'Authorization' => 'Bearer test_api_key'
+            },
+            body: hash_including(
+              messages: array_including(
+                hash_including("role" => "function", "name" => "test_function")
+              ),
+              stream: true
+            )
+          )
+          .to_return(
+            status: 200,
+            headers: {
+              'Content-Type' => 'text/event-stream',
+              'Transfer-Encoding' => 'chunked'
+            },
+            body: final_response_chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join
+          )
+
         response = agent.chat(messages, &block)
         expect(response).to include(
           a_hash_including(
@@ -123,6 +341,62 @@ RSpec.describe Bristow::Agent do
             )
           )
         )
+      end
+
+      it "handles empty deltas in streaming" do
+        chunks = [
+          { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {} }] },
+          { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Hello" } }] },
+          { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+        ]
+
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .with(
+            headers: {
+              'Content-Type' => 'application/json',
+              'Authorization' => 'Bearer test_api_key'
+            }
+          )
+          .to_return(
+            status: 200,
+            headers: {
+              'Content-Type' => 'text/event-stream',
+              'Transfer-Encoding' => 'chunked'
+            },
+            body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join
+          )
+
+        response = []
+        agent.chat(messages) { |part| response << part }
+        expect(response.join).to eq("Hello")
+      end
+
+      it "handles missing choices in streaming" do
+        chunks = [
+          { id: "1", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo" },
+          { id: "2", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: { role: "assistant", content: "Hello" } }] },
+          { id: "3", object: "chat.completion.chunk", created: Time.now.to_i, model: "gpt-3.5-turbo", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] }
+        ]
+
+        stub_request(:post, "https://api.openai.com/v1/chat/completions")
+          .with(
+            headers: {
+              'Content-Type' => 'application/json',
+              'Authorization' => 'Bearer test_api_key'
+            }
+          )
+          .to_return(
+            status: 200,
+            headers: {
+              'Content-Type' => 'text/event-stream',
+              'Transfer-Encoding' => 'chunked'
+            },
+            body: chunks.map { |chunk| "data: #{chunk.to_json}\n\n" }.join
+          )
+
+        response = []
+        agent.chat(messages) { |part| response << part }
+        expect(response.join).to eq("Hello")
       end
     end
   end
