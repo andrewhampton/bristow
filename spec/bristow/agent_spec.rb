@@ -3,7 +3,7 @@
 RSpec.describe Bristow::Agent do
   before(:all) do
     @test_function = Class.new(Bristow::Function) do
-      name "test_function"
+      function_name "test_function"
       description "A test function"
       parameters({
         type: "object",
@@ -25,7 +25,7 @@ RSpec.describe Bristow::Agent do
   let(:test_agent) do
     test_function = @test_function
     Class.new(described_class) do
-      name "TestAgent"
+      agent_name "TestAgent"
       description "A test agent"
       system_message "You are a test agent that helps with testing. When asked to test something, always use the test_function."
       model "gpt-3.5-turbo"
@@ -35,9 +35,9 @@ RSpec.describe Bristow::Agent do
 
   subject(:agent) { test_agent.new }
 
-  describe ".name" do
+  describe ".agent_name" do
     it "sets and gets the agent name" do
-      expect(test_agent.name).to eq("TestAgent")
+      expect(test_agent.agent_name).to eq("TestAgent")
     end
   end
 
@@ -60,7 +60,7 @@ RSpec.describe Bristow::Agent do
 
     it "defaults to configuration default model" do
       agent_class = Class.new(described_class) do
-        name "DefaultModelAgent"
+        agent_name "DefaultModelAgent"
       end
       expect(agent_class.model).to eq(Bristow.configuration.model)
     end
@@ -73,7 +73,7 @@ RSpec.describe Bristow::Agent do
 
     it "defaults to empty array" do
       agent_class = Class.new(described_class) do
-        name "NoFunctionsAgent"
+        agent_name "NoFunctionsAgent"
       end
       expect(agent_class.functions).to eq([])
     end

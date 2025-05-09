@@ -3,7 +3,7 @@ require "spec_helper"
 RSpec.describe Bristow::Functions::Delegate do
   let(:test_agent) do
     Class.new(Bristow::Agent) do
-      name "TestAgent"
+      agent_name "TestAgent"
       description "A test agent"
       system_message "You are a test agent"
     end.new
@@ -67,8 +67,8 @@ RSpec.describe Bristow::Functions::Delegate do
   end
 
   describe "class methods" do
-    it "has correct name" do
-      expect(described_class.name).to eq("delegate_to")
+    it "has correct function_name" do
+      expect(described_class.function_name).to eq("delegate_to")
     end
 
     it "has description" do

@@ -1,7 +1,7 @@
 require_relative '../lib/bristow'
 
 class CountAgent < Bristow::Agent
-  name "CounterAgent"
+  agent_name "CounterAgent"
   description "Knows how to count"
   system_message "You are a helpful mupet vampire that knows how to count very well. You will find the last message in the series and reply with the next integer."
   termination Bristow::Terminations::MaxMessages.new(3)

@@ -2,7 +2,7 @@ module Bristow
   class Agent
     include Bristow::Sgetter
 
-    sgetter :name
+    sgetter :agent_name
     sgetter :description
     sgetter :system_message
     sgetter :functions, default: []
@@ -11,10 +11,12 @@ module Bristow
     sgetter :logger, default: -> { Bristow.configuration.logger }
     sgetter :termination, default: -> { Bristow::Terminations::MaxMessages.new(100) }
     attr_reader :chat_history
+    
+
 
     def initialize(
-      name: self.class.name,
-      description: self.class.name,
+      agent_name: self.class.agent_name,
+      description: self.class.description,
       system_message: self.class.system_message,
       functions: self.class.functions.dup,
       model: self.class.model,
@@ -22,7 +24,7 @@ module Bristow
       logger: self.class.logger,
       termination: self.class.termination
     )
-      @name = name
+      @agent_name = agent_name
       @description = description
       @system_message = system_message
       @functions = functions
@@ -34,7 +36,7 @@ module Bristow
     end
 
     def handle_function_call(name, arguments)
-      function = functions.find { |f| f.name == name }
+      function = functions.find { |f| f.function_name == name }
       raise ArgumentError, "Function #{name} not found" unless function
       function.call(**arguments.transform_keys(&:to_sym))
     end

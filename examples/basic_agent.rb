@@ -5,7 +5,7 @@ Bristow.configure do |config|
 end
 
 class Sydney < Bristow::Agent
-  name 'Sydney'
+  agent_name 'Sydney'
   description 'Agent for telling spy stories'
   system_message 'Given a topic, you will tell a brief spy story'
 end

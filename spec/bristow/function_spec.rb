@@ -3,7 +3,7 @@
 RSpec.describe Bristow::Function do
   let(:test_function_class) do
     Class.new(described_class) do
-      name "test_function"
+      function_name "test_function"
       description "A test function"
       parameters({
         properties: {
@@ -31,9 +31,9 @@ RSpec.describe Bristow::Function do
 
   subject(:function) { test_function_class.new }
 
-  describe ".name" do
+  describe ".function_name" do
     it "sets and gets the function name" do
-      expect(test_function_class.name).to eq("test_function")
+      expect(test_function_class.function_name).to eq("test_function")
     end
   end
 

@@ -3,7 +3,7 @@
 RSpec.describe Bristow::Agencies::Workflow do
   let(:test_agent_one) do
     Class.new(Bristow::Agent) do
-      name "TestAgentOne"
+      agent_name "TestAgentOne"
       description "A test agent that modifies messages"
       system_message "You are test agent one"
 
@@ -15,7 +15,7 @@ RSpec.describe Bristow::Agencies::Workflow do
 
   let(:test_agent_two) do
     Class.new(Bristow::Agent) do
-      name "TestAgentTwo"
+      agent_name "TestAgentTwo"
       description "A test agent that processes messages"
       system_message "You are test agent two"
 
@@ -121,7 +121,7 @@ RSpec.describe Bristow::Agencies::Workflow do
         agent_one = test_agent_one
         agent_two = test_agent_two
         agent_three = Class.new(test_agent_two) do
-          name "TestAgentThree"
+          agent_name "TestAgentThree"
           def self.chat(messages, &block)
             yield "Agent Three Response" if block
             messages + [{ role: "assistant", content: "Agent Three Response" }]

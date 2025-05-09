@@ -3,9 +3,7 @@
 module Bristow
   module Functions
     class Delegate < Function
-      def self.name
-        "delegate_to"
-      end
+      function_name "delegate_to"
 
       def self.description
         "Delegate a task to a specialized agent"
@@ -28,10 +26,6 @@ module Bristow
         }
       end
 
-      def name
-        self.class.name
-      end
-
       def description
         self.class.description
       end
@@ -45,6 +39,7 @@ module Bristow
 
         @agent = agent
         @agency = agency
+        super()
       end
 
       def agency=(agency)
@@ -54,7 +49,7 @@ module Bristow
       def perform(agent_name:, message:)
         raise "Agency not set" if @agency.nil?
 
-        if agent_name == @agent.name
+        if agent_name == @agent.agent_name
           { error: "Cannot delegate to self" }
         else
           agent = @agency.find_agent(agent_name)

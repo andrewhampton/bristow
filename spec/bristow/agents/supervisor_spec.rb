@@ -1,9 +1,8 @@
 # frozen_string_literal: true
-
 RSpec.describe Bristow::Agents::Supervisor do
   before(:all) do
     @test_agent_class = Class.new(Bristow::Agent) do
-      name "TestAgent"
+      agent_name "TestAgent"
       description "A test agent"
       system_message "You are a test agent"
     end
@@ -22,7 +21,7 @@ RSpec.describe Bristow::Agents::Supervisor do
 
   describe ".class_methods" do
     it "has correct class-level attributes" do
-      expect(described_class.name).to eq("Supervisor")
+      expect(described_class.agent_name).to eq("Supervisor")
       expect(described_class.description).to eq("A supervisor agent that coordinates between specialized agents")
       expect(described_class.custom_instructions).to be_nil
     end
@@ -37,12 +36,12 @@ RSpec.describe Bristow::Agents::Supervisor do
 
   describe "#initialize" do
     it "creates a supervisor with available agents" do
-      expect(supervisor.name).to eq("Supervisor")
+      expect(supervisor.agent_name).to eq("Supervisor")
       expect(described_class.description).to eq("A supervisor agent that coordinates between specialized agents")
     end
 
     it "includes agent descriptions in system message" do
-      expect(supervisor.system_message).to match(/Available agents:\n- TestAgent: TestAgent\n/)
+      expect(supervisor.system_message).to match(/Available agents:\n- TestAgent: A test agent\n/)
     end
 
     it "includes custom instructions in system message" do
@@ -59,7 +58,7 @@ RSpec.describe Bristow::Agents::Supervisor do
 
     it "sets up delegation function" do
       delegate_fn = supervisor.functions.first
-      expect(delegate_fn.name).to eq("delegate_to")
+      expect(delegate_fn.function_name).to eq("delegate_to")
       expect(delegate_fn.parameters[:properties]).to include(:agent_name, :message)
     end
 
@@ -213,7 +212,7 @@ RSpec.describe Bristow::Agents::Supervisor do
 
     it "has correct class-level attributes" do
       delegate_class = Bristow::Functions::Delegate
-      expect(delegate_class.name).to eq("delegate_to")
+      expect(delegate_class.function_name).to eq("delegate_to")
       expect(delegate_class.description).to eq("Delegate a task to a specialized agent")
       expect(delegate_class.parameters).to include(
         type: "object",
@@ -227,7 +226,7 @@ RSpec.describe Bristow::Agents::Supervisor do
 
     it "delegates class methods to instance methods" do
       delegate = Bristow::Functions::Delegate.new(supervisor, agency)
-      expect(delegate.name).to eq(Bristow::Functions::Delegate.name)
+      expect(delegate.function_name).to eq(Bristow::Functions::Delegate.function_name)
       expect(delegate.description).to eq(Bristow::Functions::Delegate.description)
       expect(delegate.parameters).to eq(Bristow::Functions::Delegate.parameters)
     end
