@@ -8,7 +8,11 @@ if [[ "$1" != "major" && "$1" != "minor" && "$1" != "patch" && "$1" != "pre" && 
   exit 1
 fi
 
-next_version=$(gem bump --version "$1" --pretend --no-commit | awk '{print $4}')
+if [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  next_version="$1"
+else
+  next_version=$(gem bump --version "$1" --pretend --no-commit | awk '{print $4}')
+fi
 
 echo "NEXT VERSION: $next_version"
 
@@ -23,6 +27,22 @@ gem bump --version "$1" --push --tag --release --pretend
 read -p "Please review the proposed changes. Press enter when you're ready to execute it."
 
 # Actually release
-gem bump --version "$1" --push --tag --release
+gem bump --version "$1" --no-commit
+
+# Update Gemfile.lock with the new version
+bundle install
+
+# Check if there are any uncommitted changes
+if [[ -n $(git status --porcelain) ]]; then
+  # Commit the Gemfile.lock changes
+  git add Gemfile.lock lib/bristow/version.rb
+  git commit -m "Update Gemfile.lock for v$next_version"
+fi
+
+# Now push, tag, and release
+gem release --tag
+
+# Push the version commit and tag to the repository
+git push
 
 gh release create "v$next_version" --generate-notes --latest --title "v$next_version" --verify-tag

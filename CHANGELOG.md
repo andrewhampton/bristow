@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [0.5.1] - 2025-05-08
+
+- Improve publish script
+
 ## [0.5.0] - 2025-05-08
 
 - Add termination conditions so you can ensure an agent stop after a certain amount of time.
