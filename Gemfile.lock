@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bristow (0.5.0)
+    bristow (0.5.1)
       ruby-openai (~> 7.0.0)
 
 GEM
