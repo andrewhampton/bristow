@@ -5,13 +5,23 @@ module Bristow
     include Bristow::Sgetter
     include Bristow::Delegate
 
-    sgetter :name, default: -> { self.class.name }
+    sgetter :function_name, default: nil
     sgetter :description
     sgetter :parameters, default: {}
 
+    def initialize(
+      function_name: self.class.function_name,
+      description: self.class.description,
+      parameters: self.class.parameters
+    )
+      @function_name = function_name
+      @description = description
+      @parameters = parameters
+    end
+
     def self.to_openai_schema
       {
-        name: name,
+        name: function_name,
         description: description,
         parameters: parameters
       }

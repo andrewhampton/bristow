@@ -1,13 +1,13 @@
 require_relative '../lib/bristow'
 
 class PirateTalker < Bristow::Agent
-  name "PirateSpeaker"
+  agent_name "PirateSpeaker"
   description "Agent for translating input to pirate-speak"
   system_message 'Given a text, you will translate it to pirate-speak.'
 end
 
 class TravelAgent < Bristow::Agent
-  name "TravelAgent"
+  agent_name "TravelAgent"
   description "Agent for planning trips"
   system_message 'Given a destination, you will plan a trip. You will respond with an itinerary that includes dates, times, and locations only.'
 end

@@ -17,7 +17,7 @@ module Bristow
     end
 
     def find_agent(name)
-      agent = agents.find { |agent| agent_name(agent) == name }
+      agent = agents.find { |agent| agent_name_for(agent) == name }
       return nil unless agent
       
       agent.is_a?(Class) ? agent.new : agent
@@ -32,8 +32,8 @@ module Bristow
 
     private
 
-    def agent_name(agent)
-      agent.is_a?(Class) ? agent.name : agent.class.name
+    def agent_name_for(agent)
+      agent.is_a?(Class) ? agent.agent_name : agent.class.agent_name
     end
   end
 end

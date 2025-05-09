@@ -4,16 +4,16 @@
 # Example:
 # class Agent
 #   include Bristow::Sgetter
-#   sgetter :name
+#   sgetter :agent_name
 #   sgetter :model, default: -> { Bristow.configuration.model }
 # end
 #
 # class Sydney < Agent
-#   name 'Sydney'
+#   agent_name 'Sydney'
 # end
 #
 # sydney = Sydney.new
-# sydney.name # => 'Sydney'
+# sydney.agent_name # => 'Sydney'
 module Bristow
   module Sgetter
     def self.included(base)

@@ -6,7 +6,7 @@ end
 
 # Define functions that GPT can call
 class WeatherLookup < Bristow::Function
-  name "get_weather"
+  function_name "get_weather"
   description "Get the current weather for a location"
   parameters ({
     type: "object",
@@ -32,7 +32,7 @@ end
 
 # Create an agent with these functions
 class WeatherAgent < Bristow::Agent
-  name "WeatherAssistant"
+  agent_name "WeatherAssistant"
   description "Helps with weather-related queries"
   system_message "You are a helpful weather assistant. You'll be asked about the weather, and should use the get_weather function to respond."
   functions [WeatherLookup]

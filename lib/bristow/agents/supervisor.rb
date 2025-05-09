@@ -5,7 +5,7 @@ module Bristow
     class Supervisor < Agent
       attr_reader :agency
 
-      name "Supervisor"
+      agent_name "Supervisor"
       description "A supervisor agent that coordinates between specialized agents"
       system_message <<~MESSAGE
         You are a supervisor agent that coordinates between specialized agents.
@@ -32,14 +32,15 @@ module Bristow
         @custom_instructions = custom_instructions || self.class.custom_instructions
         @termination = termination
         agency.agents << self
-        functions << Functions::Delegate.new(self, agency)
+        @functions ||= []
+        @functions << Functions::Delegate.new(self, agency)
       end
 
       private
 
       def build_system_message(available_agents)
         agent_descriptions = available_agents.map do |agent|
-          "- #{agent.name}: #{agent.description}"
+          "- #{agent.agent_name}: #{agent.description}"
         end.join("\n")
 
         <<~MESSAGE

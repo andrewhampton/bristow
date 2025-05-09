@@ -1,9 +1,8 @@
 # frozen_string_literal: true
-
 RSpec.describe Bristow::Agencies::Supervisor do
   let(:test_agent_one) do
     Class.new(Bristow::Agent) do
-      name "TestAgentOne"
+      agent_name "TestAgentOne"
       description "A test agent that modifies messages"
       system_message "You are test agent one"
     end
@@ -11,7 +10,7 @@ RSpec.describe Bristow::Agencies::Supervisor do
 
   let(:test_agent_two) do
     Class.new(Bristow::Agent) do
-      name "TestAgentTwo"
+      agent_name "TestAgentTwo"
       description "A test agent that processes messages"
       system_message "You are test agent two"
     end
@@ -58,7 +57,7 @@ RSpec.describe Bristow::Agencies::Supervisor do
   end
   before(:all) do
     @test_function = Class.new(Bristow::Function) do
-      name "test_function"
+      function_name "test_function"
       description "A test function"
       parameters({
         type: "object",
@@ -77,7 +76,7 @@ RSpec.describe Bristow::Agencies::Supervisor do
     end
 
     @test_agent_class = Class.new(Bristow::Agent) do
-      name "TestAgent"
+      agent_name "TestAgent"
       description "A test agent"
       system_message "You are a test agent"
       functions [@test_function]
@@ -143,7 +142,7 @@ RSpec.describe Bristow::Agencies::Supervisor do
   end
 
   describe "delegation" do
-    let(:delegate_fn) { agency.supervisor.functions.find { |f| f.name == "delegate_to" } }
+    let(:delegate_fn) { agency.supervisor.functions.find { |f| f.function_name == "delegate_to" } }
 
     it "delegates to the specified agent" do
       stub_request(:post, "https://api.openai.com/v1/chat/completions")

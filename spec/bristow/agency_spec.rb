@@ -3,12 +3,12 @@
 RSpec.describe Bristow::Agency do
   before(:all) do
     @test_agent1_class = Class.new(Bristow::Agent) do
-      name "TestAgent1"
+      agent_name "TestAgent1"
       description "A test agent"
     end
 
     @test_agent2_class = Class.new(Bristow::Agent) do
-      name "TestAgent2"
+      agent_name "TestAgent2"
       description "Another test agent"
     end
   end
@@ -40,11 +40,11 @@ RSpec.describe Bristow::Agency do
   end
 
   describe "#find_agent" do
-    it "finds an agent by name from a class" do
+    it "finds an agent by agent_name from a class" do
       expect(agency.find_agent("TestAgent1")).to be_a(@test_agent1_class)
     end
 
-    it "finds an agent by name from an instance" do
+    it "finds an agent by agent_name from an instance" do
       expect(agency.find_agent("TestAgent1")).to be_a(@test_agent1_class)
     end
 

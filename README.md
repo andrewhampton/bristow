@@ -41,7 +41,7 @@ end
 # Define functions that the model can call to interact with your app
 class UserSearch < Bristow::Function
   # Name that will be provided to the AI model for function calls
-  name "user_search"
+  function_name "user_search"
 
   # Description for the AI model that it can use to determine when
   # it should call this function
@@ -76,7 +76,7 @@ end
 
 # Create an agent with access to the function
 class UserQueryAssistant < Bristow::Agent
-  name "UserQueryAssistant"
+  agent_name "UserQueryAssistant"
   description "Helps with user-related queries"
   system_message <<~MSG 
     You are a user management assistant. 
@@ -126,7 +126,7 @@ Agents can be configured similar to something like `ActiveJob` or `Sidekiq`. You
 
 ```ruby
 class Pirate < Bristow::Agent
-  name "Pirate"
+  agent_name "Pirate"
   description "An agent that assists the user while always talking like a pirate."
   system_message "You are a helpful assistant that always talks like a pirate. Try to be as corny and punny as possible."
 end
@@ -141,7 +141,7 @@ end
 
 Here's an overview of all config options available when configuring an Agent:
 
-- `name`: The name of the agent
+- `agent_name`: The name of the agent
 - `description`: Description of what the agent can do. Can be used by agencies to provide information about the agent, informing the model when this agent should be used.
 - `system_message`: The system message to be sent before the first user message. This can be used to provide context to the model about the conversation.
 - `functions`: An array of `Bristow::Function` classes that the agent has access to. When working on the task assigned by the user, the AI model will have access to these functions, and will decide when a call to any function call is necessary.
@@ -168,7 +168,7 @@ You can think of functions as an API for your application for the AI model. When
 
 ```ruby
 class TodoAssigner < Bristow::Function
-  name "todo_assigner"
+  function_name "todo_assigner"
   description "Given a user ID and a todo ID, it will assign the todo to the user."
   parameters({
     properties: {
@@ -198,7 +198,7 @@ end
 
 Functions have 3 config options, and a `#perform` function:
 
-- `name`: The name of the function. Provided to the AI model to help it call this function, and can be used to determine whether or not this function should be called.
+- `function_name`: The name of the function. Provided to the AI model to help it call this function, and can be used to determine whether or not this function should be called.
 - `description`: A description of the function that will be provided to the AI model. Important for informing the model about what this function can do, so it's able to determine when to call this function.
 - `parameters`: The JSON schema definition of the function's API. See Open AI's [function docs](https://platform.openai.com/docs/guides/function-calling) for detailed information.
 - `#perform`: The perform function is your implementation for the function. You'll check out the parameters passed in from the model, and handle any operation it's requesting to do.
@@ -288,7 +288,7 @@ end
 
 # You can overrided these settings on a per-agent basis like this:
 storyteller = Bristow::Agent.new(
-  name: 'Sydney',
+  agent_name: 'Sydney',
   description: 'Agent for telling spy stories',
   system_message: 'Given a topic, you will tell a brief spy story',
   model: 'gpt-4o-mini',
