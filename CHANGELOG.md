@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.5.0] - 2025-05-08
+
 - Add termination conditions so you can ensure an agent stop after a certain amount of time.
 - Drop VCR in favor of WebMock for testing
 - Fix `name` shadowing the built-in function for agent and function
