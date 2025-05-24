@@ -1,7 +1,16 @@
 require_relative '../lib/bristow'
 
 Bristow.configure do |config|
+  # Set provider based on environment variable, default to OpenAI
+  provider = ENV['BRISTOW_PROVIDER']&.to_sym || :openai
+  config.default_provider = provider
+
+  case provider
+  when :anthropic
+    config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']
+  when :openai
     config.model = 'gpt-4o-mini'
+  end
 end
 
 # Define functions that GPT can call
@@ -39,7 +48,7 @@ class WeatherAgent < Bristow::Agent
 end
 
 # Start a conversation
-messages = WeatherAgent.chat("What's the weather like in London?") do |part|
+messages = WeatherAgent.chat("What's the weather like in London, UK?") do |part|
   print part
 end
 

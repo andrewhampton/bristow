@@ -72,34 +72,50 @@ RSpec.describe Bristow::Agents::Supervisor do
     let(:messages) { [{ role: "user", content: "Please help me" }] }
     let(:function_call_response) do
       {
-        "choices" => [{
-          "message" => {
-            "role" => "assistant",
-            "function_call" => {
-              "name" => "delegate_to",
-              "arguments" => JSON.dump({
-                "agent_name" => "TestAgent",
-                "message" => "How can I help you?"
-              })
-            }
-          }
-        }]
+        "role" => "assistant",
+        "function_call" => {
+          "name" => "delegate_to",
+          "arguments" => JSON.dump({
+            "agent_name" => "TestAgent",
+            "message" => "How can I help you?"
+          })
+        }
       }
     end
     let(:final_response) do
       {
-        "choices" => [{
-          "message" => {
-            "role" => "assistant",
-            "content" => "I've helped you with that"
-          }
-        }]
+        "role" => "assistant",
+        "content" => "I've helped you with that"
       }
     end
 
     before do
-      allow(Bristow.configuration).to receive(:client).and_return(client)
-      allow(client).to receive(:chat).and_return(function_call_response, final_response)
+      # Mock the provider instead of the client directly
+      mock_provider = instance_double(Bristow::Providers::Openai)
+      allow(Bristow.configuration).to receive(:client_for).with(:openai).and_return(mock_provider)
+      allow(Bristow.configuration).to receive(:client).and_return(mock_provider)
+      allow(mock_provider).to receive(:default_model).and_return("gpt-4o-mini")
+      allow(mock_provider).to receive(:format_functions).and_return({
+        functions: [{ name: "delegate_to", description: "Delegate a task to a specialized agent" }],
+        function_call: "auto"
+      })
+      allow(mock_provider).to receive(:chat).and_return(function_call_response, final_response)
+      allow(mock_provider).to receive(:is_function_call?) do |response|
+        response.key?("function_call")
+      end
+      allow(mock_provider).to receive(:function_name) do |response|
+        response["function_call"]["name"]
+      end
+      allow(mock_provider).to receive(:function_arguments) do |response|
+        JSON.parse(response["function_call"]["arguments"])
+      end
+      allow(mock_provider).to receive(:format_function_response) do |response, result|
+        {
+          "role" => "function",
+          "name" => response["function_call"]["name"],
+          "content" => result.to_json
+        }
+      end
       allow(test_agent).to receive(:chat).and_return([{ "role" => "assistant", "content" => "Test response" }])
     end
 
@@ -111,7 +127,17 @@ RSpec.describe Bristow::Agents::Supervisor do
     end
 
     it "handles API errors" do
-      allow(client).to receive(:chat).and_raise(Faraday::BadRequestError.new(nil, { body: "error" }))
+      # Reset the mock to only return the error
+      mock_provider = instance_double(Bristow::Providers::Openai)
+      allow(Bristow.configuration).to receive(:client_for).with(:openai).and_return(mock_provider)
+      allow(Bristow.configuration).to receive(:client).and_return(mock_provider)
+      allow(mock_provider).to receive(:default_model).and_return("gpt-4o-mini")
+      allow(mock_provider).to receive(:format_functions).and_return({
+        functions: [{ name: "delegate_to", description: "Delegate a task to a specialized agent" }],
+        function_call: "auto"
+      })
+      allow(mock_provider).to receive(:chat).and_raise(Faraday::BadRequestError.new(nil, { body: "error" }))
+      
       expect {
         supervisor.chat("Help me")
       }.to raise_error(Faraday::BadRequestError)

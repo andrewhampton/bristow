@@ -75,9 +75,9 @@ RSpec.describe Bristow::Function do
     end
   end
 
-  describe "#to_openai_schema" do
+  describe "#to_schema" do
     it "returns the correct schema format" do
-      schema = function.to_openai_schema
+      schema = function.to_schema
       expect(schema).to eq({
         name: "test_function",
         description: "A test function",

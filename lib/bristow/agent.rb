@@ -6,12 +6,13 @@ module Bristow
     sgetter :description
     sgetter :system_message
     sgetter :functions, default: []
+    sgetter :provider, default: -> { Bristow.configuration.default_provider }
     sgetter :model, default: -> { Bristow.configuration.model }
-    sgetter :client, default: -> { Bristow.configuration.client }
+    sgetter :client, default: nil
     sgetter :logger, default: -> { Bristow.configuration.logger }
     sgetter :termination, default: -> { Bristow::Terminations::MaxMessages.new(100) }
     attr_reader :chat_history
-    
+
 
 
     def initialize(
@@ -19,6 +20,7 @@ module Bristow
       description: self.class.description,
       system_message: self.class.system_message,
       functions: self.class.functions.dup,
+      provider: self.class.provider,
       model: self.class.model,
       client: self.class.client,
       logger: self.class.logger,
@@ -28,8 +30,9 @@ module Bristow
       @description = description
       @system_message = system_message
       @functions = functions
+      @provider = provider
       @model = model
-      @client = client
+      @client = client || Bristow.configuration.client_for(@provider)
       @logger = logger
       @chat_history = []
       @termination = termination
@@ -41,8 +44,8 @@ module Bristow
       function.call(**arguments.transform_keys(&:to_sym))
     end
 
-    def functions_for_openai
-      functions.map(&:to_openai_schema)
+    def formatted_functions
+      client.format_functions(functions)
     end
 
     def self.chat(...)
@@ -65,38 +68,33 @@ module Bristow
         }
 
         if functions.any?
-          params[:functions] = functions_for_openai
-          params[:function_call] = "auto"
+          params.merge!(formatted_functions)
         end
 
-        logger.debug("Calling OpenAI API with params: #{params}")
+        logger.debug("Calling #{provider} API with params: #{params}")
         response_message = if block_given?
-          handle_streaming_chat(params, &block)
+          client.stream_chat(params, &block)
         else
-          response = client.chat(parameters: params)
-          response.dig("choices", 0, "message")
+          client.chat(params)
         end
 
         messages << response_message
         @chat_history << response_message
 
         # If there's no function call, we're done
-        break unless response_message["function_call"]
+        break unless client.is_function_call?(response_message)
 
         # Handle the function call and add its result to the messages
         result = handle_function_call(
-          response_message["function_call"]["name"],
-          JSON.parse(response_message["function_call"]["arguments"])
+          client.function_name(response_message),
+          client.function_arguments(response_message)
         )
 
-        yield "\n[Function Call: #{response_message["function_call"]["name"]}]\n" if block_given?
+        yield "\n[Function Call: #{response_message}]\n" if block_given?
         yield "#{result.to_json}\n" if block_given?
 
-        messages << {
-          "role" => "function",
-          "name" => response_message["function_call"]["name"],
-          "content" => result.to_json
-        }
+
+        messages << client.format_function_response(response_message, result)
       end
 
       messages
@@ -107,49 +105,7 @@ module Bristow
 
     private
 
-    def handle_streaming_chat(params)
-      full_content = ""
-      function_name = nil
-      function_args = ""
 
-      stream_proc = proc do |chunk|
-        delta = chunk.dig("choices", 0, "delta")
-        next unless delta
-
-        if delta["function_call"]
-          # Building function call
-          if delta.dig("function_call", "name")
-            function_name = delta.dig("function_call", "name")
-          end
-
-          if delta.dig("function_call", "arguments")
-            function_args += delta.dig("function_call", "arguments")
-          end
-        elsif delta["content"]
-          # Regular content
-          full_content += delta["content"]
-          yield delta["content"]
-        end
-      end
-
-      params[:stream] = stream_proc
-      client.chat(parameters: params)
-
-      if function_name
-        {
-          "role" => "assistant",
-          "function_call" => {
-            "name" => function_name,
-            "arguments" => function_args
-          }
-        }
-      else
-        {
-          "role" => "assistant",
-          "content" => full_content
-        }
-      end
-    end
 
     def system_message_hash
       {

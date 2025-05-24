@@ -19,14 +19,14 @@ module Bristow
       @parameters = parameters
     end
 
-    def self.to_openai_schema
+    def self.to_schema
       {
         name: function_name,
         description: description,
         parameters: parameters
       }
     end
-    delegate :to_openai_schema, to: :class
+    delegate :to_schema, to: :class
 
     def self.call(...)
       new.call(...)

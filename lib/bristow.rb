@@ -1,11 +1,16 @@
 # frozen_string_literal: true
 require 'openai'
+require 'anthropic'
 require 'logger'
 require 'json'
 
 require_relative "bristow/version"
 require_relative "bristow/helpers/sgetter"
 require_relative "bristow/helpers/delegate"
+require_relative "bristow/providers/base"
+require_relative "bristow/providers/openai"
+require_relative "bristow/providers/anthropic"
+require_relative "bristow/providers/google"
 require_relative "bristow/configuration"
 require_relative "bristow/function"
 require_relative "bristow/functions/delegate"
