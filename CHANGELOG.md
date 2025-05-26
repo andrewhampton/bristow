@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+- Drop support for ruby 3.0 and 3.1
+- Add Anthropic API support
+
 ## [0.5.1] - 2025-05-08
 
 - Improve publish script
