@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bristow (0.5.1)
+    bristow (1.0.0)
       anthropic (~> 1.0)
       ruby-openai (~> 7.0.0)
 
