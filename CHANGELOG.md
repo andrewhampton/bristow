@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.0.0] - 2025-05-26
+
 - Drop support for ruby 3.0 and 3.1
 - Add Anthropic API support
 
